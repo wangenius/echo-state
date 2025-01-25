@@ -12,9 +12,7 @@
 ## 安装
 
 ```bash
-npm install echo-state
-# 或
-yarn add echo-state
+npm install echo-state zustand
 ```
 
 ## 使用示例
@@ -22,33 +20,43 @@ yarn add echo-state
 ```typescript
 import { Echo } from "echo-state";
 
-// 创建一个状态实例
-const counter = new Echo("counter", { count: 0 });
+interface UserState {
+  name: string;
+  age: number;
+}
 
-// 使用状态
-const count = counter.use((state) => state.count);
-
-// 更新状态
-counter.set({ count: count + 1 });
-
-// 订阅状态变化
-counter.subscribe((state) => {
-  console.log("状态已更新:", state);
+const userStore = new Echo<UserState>("user", {
+  name: "",
+  age: 0,
 });
+
+// 使用 Hook
+function UserComponent() {
+  const user = userStore.use();
+  // 或者选择部分状态
+  const name = userStore.use((state) => state.name);
+
+  return <div>{name}</div>;
+}
+
+// 直接操作
+userStore.set({ name: "John" });
+userStore.delete("age");
+userStore.reset();
 ```
 
 ## API
 
-### 创建实例
+### 构造函数
 
 ```typescript
-const echo = new Echo(name: string, defaultValue: T, options?: EchoOptions);
+new Echo<T>(name: string, defaultValue: T, options?: Partial<EchoOptions>)
 ```
 
 ### 配置选项
 
 ```typescript
-interface EchoOptions<T = any> {
+interface EchoOptions<T> {
   storage: "localStorage" | "indexedDB";
   persist: boolean;
   onChange?: (newState: T, oldState: T) => void;

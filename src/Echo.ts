@@ -3,11 +3,11 @@
  * 用于管理全局状态，支持持久化
  */
 
-import localforage from 'localforage';
-import { create, StateCreator, StoreApi, UseBoundStore } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import localforage from "localforage";
+import { create, StateCreator, StoreApi, UseBoundStore } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 /* 存储类型 */
-type StorageType = 'localStorage' | 'indexedDB';
+type StorageType = "localStorage" | "indexedDB";
 
 /* Echo 配置 */
 interface EchoOptions<T = any> {
@@ -24,7 +24,7 @@ interface EchoOptions<T = any> {
 */
 const DEFAULT_OPTIONS: EchoOptions = {
   persist: true,
-  storage: 'localStorage',
+  storage: "localStorage",
 };
 
 /**
@@ -66,7 +66,7 @@ class Echo<T = Record<string, any>> {
   }
 
   public delete(key: keyof T) {
-    this.store.setState(state => {
+    this.store.setState((state: T) => {
       const newState = { ...state };
       delete (newState as any)[key];
       return newState;
@@ -102,9 +102,9 @@ class Echo<T = Record<string, any>> {
       persist(() => this.defaultValue, {
         name: this.name,
         storage: createJSONStorage(() =>
-          this.options.storage === 'localStorage' ? localStorage : localforage
+          this.options.storage === "localStorage" ? localStorage : localforage
         ),
-        merge: persistedState => {
+        merge: (persistedState: any) => {
           return persistedState && Object.keys(persistedState).length > 0
             ? (persistedState as T)
             : this.defaultValue;

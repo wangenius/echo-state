@@ -1,8 +1,8 @@
-import resolve from "@rollup/plugin-node-resolve";
-import commonjs from "@rollup/plugin-commonjs";
-import typescript from "@rollup/plugin-typescript";
+const resolve = require("@rollup/plugin-node-resolve");
+const commonjs = require("@rollup/plugin-commonjs");
+const typescript = require("@rollup/plugin-typescript");
 
-export default {
+module.exports = {
   input: "src/index.ts",
   output: [
     {
@@ -12,11 +12,11 @@ export default {
     },
     {
       file: "dist/index.esm.js",
-      format: "es",
+      format: "esm",
       sourcemap: true,
     },
   ],
-  external: ["zustand", "localforage", "react"],
+  external: ["react", "zustand", "localforage"],
   plugins: [
     resolve(),
     commonjs(),
@@ -24,6 +24,7 @@ export default {
       tsconfig: "./tsconfig.json",
       declaration: true,
       declarationDir: "dist",
+      exclude: ["**/__tests__/**"],
     }),
   ],
 };
