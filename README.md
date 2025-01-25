@@ -1,6 +1,6 @@
 # echo-state
 
-一个轻量级的状态管理库，支持本地存储和 IndexedDB。
+一个轻量级的状态管理库，支持本地存储和 IndexedDB。 zustand 语法糖。
 
 ## 特性
 
