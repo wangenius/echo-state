@@ -10,12 +10,9 @@
 	],
 	"scripts": {
 		"build": "rollup -c",
-		"test": "jest",
 		"prepublishOnly": "npm run build",
 		"lint": "eslint . --ext .ts",
-		"format": "prettier --write \"src/**/*.ts\"",
-		"test:watch": "jest --watch",
-		"test:coverage": "jest --coverage"
+		"format": "prettier --write \"src/**/*.ts\""
 	},
 	"keywords": [
 		"state-management",
