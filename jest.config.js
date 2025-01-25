@@ -16,4 +16,17 @@ module.exports = {
     "jest-localstorage-mock",
     "fake-indexeddb/auto",
   ],
+  setupFilesAfterEnv: [
+    "@testing-library/jest-dom"
+  ],
+  moduleNameMapper: {
+    "\\.(css|less|scss|sass)$": "identity-obj-proxy"  // 如果有样式文件的话
+  },
+  testPathIgnorePatterns: [
+    "/node_modules/",
+    "/dist/"
+  ],
+  transform: {
+    "^.+\\.(ts|tsx)$": "ts-jest"
+  }
 }; 
