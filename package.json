@@ -61,5 +61,8 @@
 		"url": "https://github.com/wangenius/echo-state/issues"
 	},
 	"homepage": "https://github.com/wangenius/echo-state#readme",
-	"sideEffects": false
+	"sideEffects": false,
+	"engines": {
+		"node": ">=18.0.0"
+	}
 }
