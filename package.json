@@ -1,0 +1,41 @@
+{
+	"name": "echo-state",
+	"version": "1.0.0",
+	"description": "一个轻量级的状态管理库，支持本地存储和 IndexedDB",
+	"main": "dist/index.js",
+	"module": "dist/index.esm.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "rollup -c",
+		"test": "jest",
+		"prepublishOnly": "npm run build"
+	},
+	"keywords": [
+		"state-management",
+		"zustand",
+		"localStorage",
+		"indexedDB"
+	],
+	"author": "您的名字",
+	"license": "MIT",
+	"dependencies": {
+		"localforage": "^1.10.0",
+		"zustand": "^4.5.0"
+	},
+	"devDependencies": {
+		"@rollup/plugin-commonjs": "^25.0.0",
+		"@rollup/plugin-node-resolve": "^15.0.0",
+		"@rollup/plugin-typescript": "^11.0.0",
+		"@types/jest": "^29.0.0",
+		"jest": "^29.0.0",
+		"rollup": "^4.0.0",
+		"typescript": "^5.0.0",
+		"tslib": "^2.6.0"
+	},
+	"peerDependencies": {
+		"react": ">=16.8.0"
+	}
+}
