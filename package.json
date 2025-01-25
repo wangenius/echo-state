@@ -49,7 +49,6 @@
 		"ts-jest": "^29.0.0",
 		"@testing-library/jest-dom": "^6.0.0",
 		"@testing-library/react": "^14.0.0",
-		"@testing-library/react-hooks": "^8.0.1",
 		"@types/testing-library__jest-dom": "^5.14.9",
 		"jest-mock": "^29.0.0",
 		"jest-mock-extended": "^3.0.0",
