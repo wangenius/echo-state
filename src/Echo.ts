@@ -6,40 +6,41 @@
 import localforage from "localforage";
 import { create, StateCreator, StoreApi, UseBoundStore } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-/* 存储类型 */
-type StorageType = "localStorage" | "indexedDB";
 
 /* Echo 配置 */
 interface EchoOptions<T = any> {
-  /* 存储类型 */
-  storage: StorageType;
-  /* 是否持久化 */
-  persist: boolean;
+  config?: LocalForageOptions;
   /* 状态变化回调 */
   onChange?: (newState: T, oldState: T) => void;
 }
-
-/* 默认配置
-
-*/
-const DEFAULT_OPTIONS: EchoOptions = {
-  persist: true,
-  storage: "localStorage",
-};
 
 /**
  * Echo 状态管理类
  */
 class Echo<T = Record<string, any>> {
+  /* 状态管理器, 用于管理状态 */
   private readonly store: UseBoundStore<StoreApi<T>>;
-  private readonly options: EchoOptions<T>;
-
+  private forage: LocalForage | undefined;
+  /** 构造函数
+   * @param defaultValue 默认状态
+   * @param options 配置
+   * @param options.name 状态名称
+   * @param options.storage 存储类型
+   * @param options.onChange 状态变化回调
+   */
   constructor(
-    private readonly name: string,
     private readonly defaultValue: T,
-    options: Partial<EchoOptions<T>> = {}
+    private options: EchoOptions<T> = {}
   ) {
-    this.options = { ...DEFAULT_OPTIONS, ...options };
+    if (options.config) {
+      const config: LocalForageOptions = {
+        name: options.config.name,
+        storeName: options.config.storeName,
+        driver: options.config.driver || localforage.LOCALSTORAGE,
+        version: options.config.version || 1.0,
+      };
+      this.forage = localforage.createInstance(config);
+    }
     this.store = this.initialize();
   }
 
@@ -57,7 +58,7 @@ class Echo<T = Record<string, any>> {
     if (replace) {
       this.store.setState(partial as T, true);
     } else {
-      this.store.setState(partial as any);
+      this.store.setState(partial);
     }
     const newState = this.current;
     if (this.options.onChange) {
@@ -65,10 +66,11 @@ class Echo<T = Record<string, any>> {
     }
   }
 
+  /** 删除状态 */
   public delete(key: keyof T) {
     this.store.setState((state: T) => {
       const newState = { ...state };
-      delete (newState as any)[key];
+      delete newState[key];
       return newState;
     }, true);
   }
@@ -91,31 +93,32 @@ class Echo<T = Record<string, any>> {
 
   /** 初始化状态 */
   private initialize() {
-    if (!this.options.persist) {
+    if (!this.forage) {
       const creator: StateCreator<T> = () => ({
         ...this.defaultValue,
       });
       return create<T>(creator);
+    } else {
+      const storage = this.forage;
+      return create<T>()(
+        persist(() => this.defaultValue, {
+          name: this.forage.config.name,
+          storage: createJSONStorage(() => storage),
+        })
+      );
     }
-
-    return create<T>()(
-      persist(() => this.defaultValue, {
-        name: this.name,
-        storage: createJSONStorage(() =>
-          this.options.storage === "localStorage" ? localStorage : localforage
-        ),
-        merge: (persistedState: any) => {
-          return persistedState && Object.keys(persistedState).length > 0
-            ? (persistedState as T)
-            : this.defaultValue;
-        },
-      })
-    );
   }
 
-  /** 订阅状态变化 */
-  public get subscribe() {
-    return this.store.subscribe.bind(this.store);
+  /** 订阅状态变化
+   * @param listener 状态变化回调
+   * @returns 订阅函数
+   */
+  public subscribe(listener: (state: T, oldState: T) => void) {
+    return this.store.subscribe(listener);
+  }
+
+  public storage(config: LocalForageOptions) {
+    localforage.config(config);
   }
 }
 
