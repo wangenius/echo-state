@@ -34,6 +34,12 @@ try {
     git add .
     git commit -m $commitMessage
     
+    # 更新版本号
+    npm version patch --no-git-tag-version
+    $newVersion = (Get-Content "package.json" -Raw | ConvertFrom-Json).version
+    git add package.json
+    git commit --amend -m "$commitMessage (v$newVersion)"
+
     # 确认是否推送
     $push = Read-Host "是否推送到远程? (Y/N)"
     if ($push -eq 'Y' -or $push -eq 'y') {
