@@ -1,6 +1,6 @@
 {
 	"name": "echo-state",
-	"version": "1.2.4",
+	"version": "1.2.5",
 	"description": "一个轻量级的状态管理库，支持本地存储和 IndexedDB",
 	"main": "dist/index.js",
 	"module": "dist/index.esm.js",
@@ -22,9 +22,6 @@
 	],
 	"author": "wangenius@qq.com",
 	"license": "MIT",
-	"dependencies": {
-		"localforage": "^1.10.0"
-	},
 	"devDependencies": {
 		"@rollup/plugin-commonjs": "^25.0.0",
 		"@rollup/plugin-node-resolve": "^15.0.0",
@@ -40,9 +37,7 @@
 		"prettier": "^2.0.0",
 		"@types/react": "^18.0.0",
 		"@types/react-dom": "^18.0.0",
-		"react": "^18.3.1",
-		"react-dom": "^18.0.0",
-		"zustand": "^5.0.0"
+		"react-dom": "^18.0.0"
 	},
 	"peerDependencies": {
 		"react": "^18.3.1",

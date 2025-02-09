@@ -1,6 +1,6 @@
 /**
  * Echo 状态管理类
- * 一个轻量级的状态管理库，支持本地存储和 IndexedDB。基于 zustand 的状态管理解决方案。
+ * 一个轻量级的状态管理库，支持本地存储。基于 zustand 的状态管理解决方案。
  *
  * @packageDocumentation
  * @module echo-state
@@ -14,10 +14,7 @@
  * const userStore = new Echo<UserState>(
  *   { name: "", age: 0 },
  *   {
- *     config: {
- *       name: "userStore",
- *       driver: LocalForage.LOCALSTORAGE,
- *     }
+ *     name: "userStore"
  *   }
  * );
  *
@@ -29,7 +26,6 @@
  * ```
  */
 
-import localforage from "localforage";
 import { create, StateCreator, StoreApi, UseBoundStore } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -40,10 +36,9 @@ import { createJSONStorage, persist } from "zustand/middleware";
  */
 interface EchoOptions<T = any> {
   /**
-   * LocalForage 配置选项
-   * 如果提供此配置，状态将被持久化存储
+   * 状态名称, 如果提供此配置，状态将被持久化存储
    */
-  config?: LocalForageOptions;
+  name?: string;
 
   /**
    * 状态变化回调函数
@@ -51,6 +46,11 @@ interface EchoOptions<T = any> {
    * @param oldState - 旧状态
    */
   onChange?: (newState: T, oldState: T) => void;
+
+  /**
+   * 是否启用跨窗口同步
+   */
+  sync?: boolean;
 }
 
 /**
@@ -64,22 +64,23 @@ interface EchoOptions<T = any> {
 class Echo<T = Record<string, any>> {
   /* 状态管理器, 用于管理状态 */
   private readonly store: UseBoundStore<StoreApi<T>>;
-  private forage: LocalForage | undefined;
+  /* 广播通道，用于跨窗口通信 */
+  private channel: BroadcastChannel | null = null;
+  /* 最后一次同步的状态哈希值 */
+  private lastSyncHash: string | null = null;
 
   /**
    * 构造函数
    * @param defaultValue - 默认状态值
    * @param options - Echo 配置选项
-   * @param options.config - LocalForage 配置，用于持久化存储
+   * @param options.name - 存储名称，用于持久化存储
    * @param options.onChange - 状态变化回调函数
+   * @param options.sync - 是否启用跨窗口同步
    *
    * @example
    * ```typescript
    * const store = new Echo({ count: 0 }, {
-   *   config: {
-   *     name: 'myStore',
-   *     driver: LocalForage.LOCALSTORAGE
-   *   },
+   *   name: 'myStore',
    *   onChange: (newState, oldState) => {
    *     console.log('State changed:', newState, oldState);
    *   }
@@ -88,18 +89,12 @@ class Echo<T = Record<string, any>> {
    */
   constructor(
     private readonly defaultValue: T,
-    private options: EchoOptions<T> = {}
+    private options: EchoOptions<T>
   ) {
-    if (options.config) {
-      const config: LocalForageOptions = {
-        name: options.config.name,
-        storeName: options.config.storeName,
-        driver: options.config.driver || localforage.LOCALSTORAGE,
-        version: options.config.version || 1.0,
-      };
-      this.forage = localforage.createInstance(config);
-    }
     this.store = this.initialize();
+    if (this.options.sync) {
+      this.initializeSync();
+    }
   }
 
   /**
@@ -111,21 +106,44 @@ class Echo<T = Record<string, any>> {
   }
 
   /**
+   * 计算状态的哈希值
+   * @param state - 状态对象
+   * @returns 哈希字符串
+   */
+  private getStateHash(state: T): string {
+    return JSON.stringify(state);
+  }
+
+  /**
+   * 发送同步消息
+   * @param newState - 新状态
+   */
+  private broadcastState(newState: T) {
+    if (!this.channel || !this.options.sync) {
+      return;
+    }
+
+    const hash = this.getStateHash(newState);
+    if (hash === this.lastSyncHash) {
+      return;
+    }
+
+    try {
+      this.channel.postMessage({
+        type: "state-update",
+        state: newState,
+        timestamp: Date.now(),
+      });
+      this.lastSyncHash = hash;
+    } catch (error) {
+      console.error("Echo: 发送同步消息失败", error);
+    }
+  }
+
+  /**
    * 设置状态
    * @param partial - 新的状态值或更新函数
    * @param replace - 是否完全替换状态，默认为 false
-   *
-   * @example
-   * ```typescript
-   * // 部分更新
-   * store.set({ name: 'John' });
-   *
-   * // 使用函数更新
-   * store.set(state => ({ count: state.count + 1 }));
-   *
-   * // 完全替换状态
-   * store.set({ name: 'John', age: 30 }, true);
-   * ```
    */
   public set(
     partial: T | Partial<T> | ((state: T) => T | Partial<T>),
@@ -138,6 +156,12 @@ class Echo<T = Record<string, any>> {
       this.store.setState(partial);
     }
     const newState = this.current;
+
+    // 直接广播状态变化
+    if (this.channel) {
+      this.broadcastState(newState);
+    }
+
     if (this.options.onChange) {
       this.options.onChange(newState, oldState);
     }
@@ -186,31 +210,22 @@ class Echo<T = Record<string, any>> {
     return selector ? this.store(selector) : this.store();
   }
 
-  /** 初始化状态 */
+  /**
+   * 初始化状态
+   * @returns 状态管理器
+   */
   private initialize() {
-    if (!this.forage) {
+    if (!this.options.name) {
       const creator: StateCreator<T> = () => ({
         ...this.defaultValue,
       });
       return create<T>(creator);
     } else {
-      const storage = this.forage;
+      const name = this.options.name;
       return create<T>()(
         persist(() => this.defaultValue, {
-          name: this.forage.config.name,
-          storage: createJSONStorage(() => storage),
-          skipHydration: true,
-          onRehydrateStorage: (state) => {
-            return (hydrationState, error) => {
-              if (error) {
-                console.error("Error during hydration:", error);
-                return;
-              }
-              if (hydrationState && this.options.onChange) {
-                this.options.onChange(hydrationState, state as T);
-              }
-            };
-          },
+          name,
+          storage: createJSONStorage(() => localStorage),
         })
       );
     }
@@ -236,11 +251,68 @@ class Echo<T = Record<string, any>> {
   }
 
   /**
-   * 配置存储选项
-   * @param config - LocalForage 配置选项
+   * 控制跨窗口同步状态
+   * @param enabled - 是否启用同步
    */
-  public storage(config: LocalForageOptions) {
-    localforage.config(config);
+  public sync(enabled: boolean = true): this {
+    if (enabled === (this.channel !== null)) {
+      return this;
+    }
+
+    if (enabled) {
+      this.initializeSync();
+    } else {
+      if (this.channel) {
+        try {
+          this.channel.close();
+        } catch (error) {
+          console.error("Echo: 关闭同步通道失败", error);
+        }
+        this.channel = null;
+      }
+      this.lastSyncHash = null;
+    }
+    return this;
+  }
+
+  /** 初始化跨窗口同步 */
+  private initializeSync() {
+    if (!this.options.name) {
+      console.warn("Echo: 无法初始化同步 - 需要提供 name 选项");
+      return;
+    }
+
+    if (typeof window === "undefined" || !("BroadcastChannel" in window)) {
+      console.warn("Echo: 当前环境不支持 BroadcastChannel");
+      return;
+    }
+
+    try {
+      const channelName = `echo-${this.options.name}`;
+      this.channel = new BroadcastChannel(channelName);
+
+      this.channel.onmessage = (event) => {
+        try {
+          if (event.data?.type === "state-update" && event.data?.state) {
+            const hash = this.getStateHash(event.data.state);
+            if (hash !== this.lastSyncHash) {
+              this.lastSyncHash = hash;
+              this.store.setState(event.data.state, true);
+            }
+          }
+        } catch (error) {
+          console.error("Echo: 处理同步消息时出错", error);
+        }
+      };
+
+      // 发送初始状态
+      this.broadcastState(this.current);
+
+      console.log(`Echo: 成功初始化同步 (${channelName})`);
+    } catch (error) {
+      console.error("Echo: 初始化同步失败", error);
+      this.channel = null;
+    }
   }
 }
 
