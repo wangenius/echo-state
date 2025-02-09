@@ -89,7 +89,7 @@ class Echo<T = Record<string, any>> {
    */
   constructor(
     private readonly defaultValue: T,
-    private options: EchoOptions<T>
+    private options: EchoOptions<T> = {}
   ) {
     this.store = this.initialize();
     if (this.options.sync) {

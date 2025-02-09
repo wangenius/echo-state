@@ -1,20 +1,20 @@
 # echo-state
 
-一个轻量级的状态管理库，支持本地存储和 IndexedDB。基于 zustand 的状态管理解决方案。
+一个轻量级的状态管理库，支持本地存储。基于 zustand 的状态管理解决方案。
 
 ## 特性
 
 - 🚀 轻量级，易于使用
-- 💾 支持 localStorage 和 IndexedDB 持久化
+- 💾 支持 localStorage 持久化
 - 🔄 支持状态变更订阅
 - 📦 完整的 TypeScript 支持
 - 🎯 支持选择性状态订阅
-- 🔄 支持跨标签页状态同步
+- 🔄 支持跨窗口状态同步
 
 ## 安装
 
 ```bash
-npm install echo-state zustand localforage
+npm install echo-state zustand
 ```
 
 ## 使用示例
@@ -28,21 +28,14 @@ interface UserState {
 }
 
 // 创建状态实例
-/**
- * @param defaultState 默认值
- * @param options 配置选项,可选， 如果没有config，表示非持久化
- */
 const userStore = new Echo<UserState>(
   { name: "", age: 0 }, // 默认值
   {
-    config: {
-      name: "userStore", // 存储名称
-      storeName: "user", // 存储键名
-      driver: LocalForage.LOCALSTORAGE, // 存储方式，支持 LOCALSTORAGE 和 INDEXEDDB
-    },
+    name: "userStore", // 存储名称，如果提供则启用持久化
     onChange: (newState, oldState) => {
       console.log("状态发生变化:", newState, oldState);
     },
+    sync: true, // 启用跨窗口同步
   }
 );
 
@@ -73,24 +66,22 @@ const unsubscribe = userStore.subscribe((state, oldState) => {
 unsubscribe();
 ```
 
-### 持久化和跨标签页同步
+### 跨窗口同步
 
-当配置了 `config` 选项时，状态会自动持久化到存储中（默认使用 localStorage）。状态变更会自动在不同标签页之间同步。
+当配置了 `sync: true` 选项时，状态会自动在不同窗口之间同步。注意：跨窗口同步需要提供 `name` 选项。
 
 ```typescript
-// 创建带持久化的状态实例
-const persistedStore = new Echo(defaultState, {
-  config: {
-    name: "myStore",
-    driver: LocalForage.LOCALSTORAGE, // 或 INDEXEDDB
-  },
+// 创建支持跨窗口同步的状态实例
+const syncedStore = new Echo(defaultState, {
+  name: "myStore",
+  sync: true,
 });
 
-// 状态会自动在标签页间同步
-// 在标签页 A 中更新状态
-persistedStore.set({ value: 123 });
+// 状态会自动在窗口间同步
+// 在窗口 A 中更新状态
+syncedStore.set({ value: 123 });
 
-// 在标签页 B 中会自动收到更新
+// 在窗口 B 中会自动收到更新
 // 并触发 onChange 回调
 ```
 
@@ -106,13 +97,9 @@ new Echo<T>(defaultValue: T, options?: EchoOptions<T>)
 
 ```typescript
 interface EchoOptions<T> {
-  config?: {
-    name: string; // 存储名称
-    storeName?: string; // 存储键名
-    driver?: string; // 存储驱动（默认 localStorage）
-    version?: number; // 版本号
-  };
+  name?: string; // 状态名称，如果提供则启用持久化存储
   onChange?: (newState: T, oldState: T) => void; // 状态变化回调
+  sync?: boolean; // 是否启用跨窗口同步
 }
 ```
 
@@ -125,7 +112,7 @@ interface EchoOptions<T> {
 - `reset()`: 重置为默认状态
 - `current`: 获取当前状态
 - `subscribe(listener)`: 订阅状态变化
-- `storage(config)`: 配置存储选项
+- `sync(enabled)`: 控制跨窗口同步状态
 
 ## License
 
