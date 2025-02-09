@@ -120,6 +120,33 @@ class Echo<T = Record<string, any>> {
   public storage(config: LocalForageOptions) {
     localforage.config(config);
   }
+
+  /** 从持久化存储中重新加载数据
+   * @returns Promise<T> 加载的数据
+   */
+  public async load(): Promise<T> {
+    if (!this.forage) {
+      return this.current;
+    }
+
+    try {
+      const storageKey = `${this.forage.config().name}`;
+      const data = await this.forage.getItem<{ state: T }>(storageKey);
+
+      if (data?.state) {
+        const oldState = this.current;
+        this.store.setState(data.state, true);
+        if (this.options.onChange) {
+          this.options.onChange(data.state, oldState);
+        }
+        return data.state;
+      }
+      return this.current;
+    } catch (error) {
+      console.error("Failed to load data from storage:", error);
+      return this.current;
+    }
+  }
 }
 
 export { Echo, type EchoOptions };
