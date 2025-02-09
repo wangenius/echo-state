@@ -9,6 +9,7 @@
 - 🔄 支持状态变更订阅
 - 📦 完整的 TypeScript 支持
 - 🎯 支持选择性状态订阅
+- 🔄 支持跨标签页状态同步
 
 ## 安装
 
@@ -37,7 +38,7 @@ const userStore = new Echo<UserState>(
     config: {
       name: "userStore", // 存储名称
       storeName: "user", // 存储键名
-      driver: LocalForage.LOCALSTORAGE, // 存储方式
+      driver: LocalForage.LOCALSTORAGE, // 存储方式，支持 LOCALSTORAGE 和 INDEXEDDB
     },
     onChange: (newState, oldState) => {
       console.log("状态发生变化:", newState, oldState);
@@ -45,7 +46,7 @@ const userStore = new Echo<UserState>(
   }
 );
 
-// 使用 Hook
+// 在 React 组件中使用
 function UserComponent() {
   const user = userStore.use();
   // 或者选择部分状态
@@ -59,12 +60,38 @@ userStore.set({ name: "John" }); // 部分更新
 userStore.set({ name: "John" }, true); // 完全替换
 userStore.delete("age"); // 删除某个键
 userStore.reset(); // 重置为默认值
-console.log(userStore.current); // 获取当前状态
+
+// 获取当前状态
+console.log(userStore.current);
 
 // 订阅状态变化
 const unsubscribe = userStore.subscribe((state, oldState) => {
   console.log("状态变化:", state, oldState);
 });
+
+// 取消订阅
+unsubscribe();
+```
+
+### 持久化和跨标签页同步
+
+当配置了 `config` 选项时，状态会自动持久化到存储中（默认使用 localStorage）。状态变更会自动在不同标签页之间同步。
+
+```typescript
+// 创建带持久化的状态实例
+const persistedStore = new Echo(defaultState, {
+  config: {
+    name: "myStore",
+    driver: LocalForage.LOCALSTORAGE, // 或 INDEXEDDB
+  },
+});
+
+// 状态会自动在标签页间同步
+// 在标签页 A 中更新状态
+persistedStore.set({ value: 123 });
+
+// 在标签页 B 中会自动收到更新
+// 并触发 onChange 回调
 ```
 
 ## API
