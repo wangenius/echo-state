@@ -26,8 +26,12 @@
  * ```
  */
 
-import { create, StateCreator, StoreApi, UseBoundStore } from "zustand";
+import { create, StoreApi, UseBoundStore, StateCreator } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import {
+  createIndexedDBMiddleware,
+  IndexedDBStorage,
+} from "./IndexedDBStorage";
 
 /**
  * Echo 配置选项接口
@@ -39,6 +43,11 @@ interface EchoOptions<T = any> {
    * 状态名称, 如果提供此配置，状态将被持久化存储
    */
   name?: string;
+
+  /**
+   * 存储类型，默认为 LocalStorage
+   */
+  storageType?: "localStorage" | "indexedDB";
 
   /**
    * 状态变化回调函数
@@ -68,6 +77,12 @@ class Echo<T = Record<string, any>> {
   private channel: BroadcastChannel | null = null;
   /* 最后一次同步的状态哈希值 */
   private lastSyncHash: string | null = null;
+
+  /* 存储重试次数 */
+  private static readonly MAX_RETRY_COUNT = 3;
+
+  /* 重试延迟 (ms) */
+  private static readonly RETRY_DELAY = 500;
 
   /**
    * 构造函数
@@ -216,18 +231,98 @@ class Echo<T = Record<string, any>> {
    */
   private initialize() {
     if (!this.options.name) {
-      const creator: StateCreator<T> = () => ({
-        ...this.defaultValue,
-      });
-      return create<T>(creator);
-    } else {
-      const name = this.options.name;
+      return create<T>(() => ({ ...this.defaultValue }));
+    }
+
+    const name = this.options.name;
+
+    if (this.options.storageType === "indexedDB") {
+      const storage = new IndexedDBStorage(name);
+      const initializer: StateCreator<T> = () => this.defaultValue;
+
       return create<T>()(
-        persist(() => this.defaultValue, {
+        createIndexedDBMiddleware<T>(storage)({
           name,
-          storage: createJSONStorage(() => localStorage),
-        })
+          onRehydrateStorage: (state) => {
+            if (state) {
+              console.log(`Echo: ${name} 状态已从存储中恢复`, state);
+            } else {
+              console.log(`Echo: ${name} 状态恢复失败，使用默认值`);
+            }
+          },
+        })(initializer)
       );
+    }
+
+    // 默认使用 localStorage
+    return create<T>()(
+      persist(() => this.defaultValue, {
+        name,
+        storage: createJSONStorage(() => localStorage),
+        onRehydrateStorage: () => (state) => {
+          if (state) {
+            console.log(`Echo: ${name} 状态已从存储中恢复`);
+          }
+        },
+      })
+    );
+  }
+
+  /**
+   * 加载状态（带重试机制）
+   */
+  private async loadState(
+    store: StoreApi<T>,
+    storage: IndexedDBStorage,
+    name: string,
+    retryCount: number = 0
+  ) {
+    try {
+      const savedState = await storage.getItem<T>(name);
+      if (savedState !== null) {
+        store.setState(savedState, true);
+        console.log(`Echo: ${name} 状态已从存储中恢复`, savedState);
+      }
+    } catch (error) {
+      console.error(
+        `Echo: 加载状态失败 (尝试 ${retryCount + 1}/${Echo.MAX_RETRY_COUNT}):`,
+        error
+      );
+
+      if (retryCount < Echo.MAX_RETRY_COUNT) {
+        // 延迟重试
+        setTimeout(() => {
+          this.loadState(store, storage, name, retryCount + 1);
+        }, Echo.RETRY_DELAY);
+      } else {
+        console.error(`Echo: 加载状态最终失败，使用默认值`);
+      }
+    }
+  }
+
+  /**
+   * 保存状态（带重试机制）
+   */
+  private async saveStateWithRetry(
+    state: T,
+    storage: IndexedDBStorage,
+    name: string,
+    retryCount: number = 0
+  ) {
+    try {
+      await storage.setItem(name, state);
+    } catch (error) {
+      console.error(
+        `Echo: 保存状态失败 (尝试 ${retryCount + 1}/${Echo.MAX_RETRY_COUNT}):`,
+        error
+      );
+
+      if (retryCount < Echo.MAX_RETRY_COUNT) {
+        // 延迟重试
+        setTimeout(() => {
+          this.saveStateWithRetry(state, storage, name, retryCount + 1);
+        }, Echo.RETRY_DELAY);
+      }
     }
   }
 
@@ -293,7 +388,7 @@ class Echo<T = Record<string, any>> {
 
       this.channel.onmessage = (event) => {
         try {
-          if (event.data?.type === "state-update" && event.data?.state) {
+          if (this.validateStateUpdate(event.data)) {
             const hash = this.getStateHash(event.data.state);
             if (hash !== this.lastSyncHash) {
               this.lastSyncHash = hash;
@@ -307,12 +402,22 @@ class Echo<T = Record<string, any>> {
 
       // 发送初始状态
       this.broadcastState(this.current);
-
-      console.log(`Echo: 成功初始化同步 (${channelName})`);
     } catch (error) {
       console.error("Echo: 初始化同步失败", error);
       this.channel = null;
     }
+  }
+
+  private validateStateUpdate(
+    data: any
+  ): data is { type: string; state: T; timestamp: number } {
+    return (
+      data &&
+      typeof data === "object" &&
+      data.type === "state-update" &&
+      data.hasOwnProperty("state") &&
+      data.hasOwnProperty("timestamp")
+    );
   }
 }
 
