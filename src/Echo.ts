@@ -28,10 +28,6 @@
 
 import { create, StoreApi, UseBoundStore, StateCreator } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import {
-  createIndexedDBMiddleware,
-  IndexedDBStorage,
-} from "./IndexedDBStorage";
 
 /**
  * Echo 配置选项接口
@@ -61,6 +57,151 @@ interface EchoOptions<T = any> {
    */
   sync?: boolean;
 }
+
+/**
+ * 简化的 IndexedDB 存储适配器
+ * 仅负责数据存储，不处理同步
+ */
+class IndexedDBStorage {
+  private version = 1;
+  private storeName = "state";
+  private db: IDBDatabase | null = null;
+
+  constructor(private readonly storageKey: string) {
+    this.initDB();
+  }
+
+  private get dbName() {
+    return `echo-${this.storageKey}`;
+  }
+
+  private async initDB(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, this.version);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        this.db = request.result;
+        resolve();
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(this.storeName)) {
+          db.createObjectStore(this.storeName, { keyPath: "id" });
+        }
+      };
+    });
+  }
+
+  async waitForDB(): Promise<void> {
+    if (!this.db) {
+      await this.initDB();
+    }
+  }
+
+  async getItem<T>(key: string): Promise<T | null> {
+    await this.waitForDB();
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(this.storeName, "readonly");
+      const store = transaction.objectStore(this.storeName);
+      const request = store.get(key);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const data = request.result;
+        if (!data) {
+          resolve(null);
+        } else {
+          // 直接返回存储的值，不进行解析
+          resolve(data.value as T);
+        }
+      };
+    });
+  }
+
+  async setItem<T>(key: string, value: T): Promise<void> {
+    await this.waitForDB();
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(this.storeName, "readwrite");
+      const store = transaction.objectStore(this.storeName);
+      // 直接存储值，不进行额外的序列化
+      const request = store.put({ id: key, value: value });
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  }
+
+  async removeItem(key: string): Promise<void> {
+    await this.waitForDB();
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(this.storeName, "readwrite");
+      const store = transaction.objectStore(this.storeName);
+      const request = store.delete(key);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  }
+
+  destroy() {
+    this.db?.close();
+    try {
+      indexedDB.deleteDatabase(this.dbName);
+    } catch (error) {
+      console.error(`Echo: 删除数据库 ${this.dbName} 失败:`, error);
+    }
+  }
+}
+
+/**
+ * IndexedDB 配置接口
+ */
+interface IndexedDBConfig<S> {
+  name: string;
+  onRehydrateStorage?: (state: S | null) => void;
+}
+
+/**
+ * 创建 IndexedDB 中间件
+ */
+const createIndexedDBMiddleware =
+  <S>(storage: IndexedDBStorage) =>
+  (config: IndexedDBConfig<S>) =>
+  (next: StateCreator<S>) =>
+  (
+    set: StoreApi<S>["setState"],
+    get: StoreApi<S>["getState"],
+    api: StoreApi<S>
+  ) => {
+    const initialState = next(set, get, api);
+
+    // 初始化时加载数据
+    (async () => {
+      try {
+        const savedState = await storage.getItem<S>(config.name);
+        if (savedState !== null) {
+          set(savedState as S, true);
+          config.onRehydrateStorage?.(savedState);
+        } else {
+          config.onRehydrateStorage?.(null);
+        }
+      } catch (error) {
+        console.error(`Echo: 加载状态失败:`, error);
+        config.onRehydrateStorage?.(null);
+      }
+    })();
+
+    // 订阅状态变化
+    api.subscribe((state: S) => {
+      storage.setItem(config.name, state).catch((error) => {
+        console.error(`Echo: 保存状态失败:`, error);
+      });
+    });
+
+    return initialState;
+  };
 
 /**
  * Echo 状态管理类

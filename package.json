@@ -1,6 +1,6 @@
 {
 	"name": "echo-state",
-	"version": "1.2.7",
+	"version": "1.2.8",
 	"description": "一个轻量级的状态管理库，支持本地存储和 IndexedDB",
 	"main": "dist/index.js",
 	"module": "dist/index.esm.js",
