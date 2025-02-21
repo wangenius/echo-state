@@ -265,6 +265,20 @@ class Echo<T extends Record<string, any>> {
   }
 
   /**
+   * 删除指定键的值，调用set方法，并传入一个函数，函数返回一个新状态，新状态中不包含指定键的值
+   */
+  delete(key: string): void {
+    this.set(
+      (state) => {
+        const newState = { ...state };
+        delete newState[key];
+        return newState;
+      },
+      { replace: true }
+    );
+  }
+
+  /**
    * 获取当前状态
    */
   public get current(): T {
@@ -275,7 +289,7 @@ class Echo<T extends Record<string, any>> {
    * 重置状态
    */
   public reset(): void {
-    this.set(this.defaultState);
+    this.set(this.defaultState, { replace: true });
   }
 
   /**
