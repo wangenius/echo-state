@@ -1,6 +1,6 @@
 {
 	"name": "echo-state",
-	"version": "1.2.10",
+	"version": "1.2.11",
 	"description": "一个轻量级的状态管理库，支持本地存储和 IndexedDB",
 	"main": "dist/index.js",
 	"module": "dist/index.esm.js",
@@ -45,7 +45,7 @@
 		"web-vitals": "^2.1.4"
 	},
 	"peerDependencies": {
-		"react": "^19.0.0"
+		"react": "^18.0.0"
 	},
 	"private": false,
 	"publishConfig": {
