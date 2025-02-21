@@ -197,6 +197,21 @@ class Echo<T extends Record<string, any>> {
           if (this.options.name) {
             await this.storage.setItem(this.options.name, event.data.state);
           }
+        } else if (event.data?.type === "state-delete") {
+          // 处理删除操作
+          this.set(
+            (state) => {
+              const newState = { ...state };
+              delete newState[event.data.key];
+              return newState;
+            },
+            { isFromSync: true, replace: true }
+          );
+
+          // 确保存储也被更新
+          if (this.options.name) {
+            await this.storage.setItem(this.options.name, this.state);
+          }
         }
       };
     } catch (error) {
@@ -271,17 +286,44 @@ class Echo<T extends Record<string, any>> {
   }
 
   /**
-   * 删除指定键的值，调用set方法，并传入一个函数，函数返回一个新状态，新状态中不包含指定键的值
+   * 删除指定键的值
    */
   delete(key: string): void {
-    this.set(
-      (state) => {
-        const newState = { ...state };
-        delete newState[key];
-        return newState;
-      },
-      { replace: true }
-    );
+    /* 创建新状态并删除指定键 */
+    const newState = { ...this.state };
+    delete newState[key];
+
+    /* 深度比较状态变化 */
+    const hasChanged = !this.isEqual(this.state, newState);
+
+    /* 如果状态没有变化，则不更新 */
+    if (!hasChanged) return;
+
+    /* 更新状态 */
+    this.state = newState;
+
+    /* 进行持久化存储 */
+    if (this.options.name && !this.isHydrating) {
+      this.storage.setItem(this.options.name, this.state).catch((error) => {
+        console.error("Echo: 状态保存失败", error);
+      });
+    }
+
+    /* 跨窗口同步 */
+    if (this.syncChannel && !this.isHydrating) {
+      this.syncChannel.postMessage({
+        type: "state-delete",
+        key: key,
+      });
+    }
+
+    /* 通知监听器 */
+    this.listeners.forEach((listener) => listener(this.state));
+
+    /* 触发 onChange 回调 */
+    if (this.options.onChange) {
+      this.options.onChange(this.state);
+    }
   }
 
   /**
