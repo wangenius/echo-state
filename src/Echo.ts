@@ -188,9 +188,15 @@ class Echo<T extends Record<string, any>> {
 
     try {
       this.syncChannel = new BroadcastChannel(`echo-${this.options.name}`);
-      this.syncChannel.onmessage = (event) => {
+      this.syncChannel.onmessage = async (event) => {
         if (event.data?.type === "state-update") {
-          this.set(event.data.state, { isFromSync: true });
+          // 确保使用 replace 模式来更新状态
+          this.set(event.data.state, { isFromSync: true, replace: true });
+
+          // 确保存储也被更新
+          if (this.options.name) {
+            await this.storage.setItem(this.options.name, event.data.state);
+          }
         }
       };
     } catch (error) {
@@ -219,27 +225,27 @@ class Echo<T extends Record<string, any>> {
     /* 更新状态 */
     this.state = finalState;
 
-    /* 通知监听器 */
-    this.listeners.forEach((listener) => listener(this.state));
-
-    /* 触发 onChange 回调 */
-    if (this.options.onChange) {
-      this.options.onChange(this.state);
-    }
-
-    /* 持久化存储 */
+    /* 先进行持久化存储 */
     if (this.options.name && !this.isHydrating) {
       this.storage.setItem(this.options.name, this.state).catch((error) => {
         console.error("Echo: 状态保存失败", error);
       });
     }
 
-    /* 跨窗口同步 */
+    /* 跨窗口同步 - 确保在存储之后进行 */
     if (this.syncChannel && !options.isFromSync && !this.isHydrating) {
       this.syncChannel.postMessage({
         type: "state-update",
         state: this.state,
       });
+    }
+
+    /* 通知监听器 */
+    this.listeners.forEach((listener) => listener(this.state));
+
+    /* 触发 onChange 回调 */
+    if (this.options.onChange) {
+      this.options.onChange(this.state);
     }
   }
 
