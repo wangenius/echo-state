@@ -30,7 +30,7 @@ interface EchoOptions<T = any> {
   /** 存储类型，可选 localStorage 或 indexedDB，默认为 localStorage */
   storage?: "localStorage" | "indexedDB";
   /** 状态变化回调函数，在每次状态更新后调用 */
-  onChange?: (state: T) => void;
+  onChange?: (newState: T, oldState: T) => void;
   /** 是否启用跨窗口同步，需要提供 name 选项才能生效 */
   sync?: boolean;
 }
@@ -220,6 +220,7 @@ class Echo<T extends Record<string, any>> {
   }
 
   set(nextState: Partial<T> | StateUpdater<T>, options: SetOptions = {}): void {
+    const oldState = this.state;
     /* 如果 nextState 是函数，则执行函数并返回新状态 */
     const newState =
       typeof nextState === "function"
@@ -232,7 +233,7 @@ class Echo<T extends Record<string, any>> {
       : { ...this.state, ...newState };
 
     /* 深度比较状态变化 */
-    const hasChanged = !this.isEqual(this.state, finalState);
+    const hasChanged = !this.isEqual(oldState, finalState);
 
     /* 如果状态没有变化，则不更新 */
     if (!hasChanged) return;
@@ -260,7 +261,7 @@ class Echo<T extends Record<string, any>> {
 
     /* 触发 onChange 回调 */
     if (this.options.onChange) {
-      this.options.onChange(this.state);
+      this.options.onChange(this.state, oldState);
     }
   }
 
@@ -289,12 +290,13 @@ class Echo<T extends Record<string, any>> {
    * 删除指定键的值
    */
   delete(key: string): void {
+    const oldState = this.state;
     /* 创建新状态并删除指定键 */
     const newState = { ...this.state };
     delete newState[key];
 
     /* 深度比较状态变化 */
-    const hasChanged = !this.isEqual(this.state, newState);
+    const hasChanged = !this.isEqual(oldState, newState);
 
     /* 如果状态没有变化，则不更新 */
     if (!hasChanged) return;
@@ -322,7 +324,7 @@ class Echo<T extends Record<string, any>> {
 
     /* 触发 onChange 回调 */
     if (this.options.onChange) {
-      this.options.onChange(this.state);
+      this.options.onChange(this.state, oldState);
     }
   }
 
