@@ -49,10 +49,11 @@ console.log(counter.current); // { count: 2 }
 ### 在 React 中使用
 
 ```typescript
+import { Echo } from "echo-state";
+
 function Counter() {
   // 使用完整状态
   const state = counter.use();
-
   // 或者只订阅部分状态
   const count = counter.use((state) => state.count);
 
@@ -65,6 +66,29 @@ function Counter() {
     </div>
   );
 }
+```
+
+> 注意：当使用 IndexedDB 存储时，`use` 方法会自动处理异步初始化。在初始化完成前，会返回默认状态。
+
+### 异步初始化处理
+
+当使用 IndexedDB 存储时，初始化是异步的。Echo 提供了两种方式在非 React 环境中处理异步初始化：
+
+```typescript
+// 方式1：使用异步方法获取状态
+const store = new Echo(defaultState, {
+  name: "myStore",
+  storage: "indexedDB",
+});
+const state = await store.getCurrent();
+
+// 方式2：等待初始化完成后再使用
+const store = new Echo(defaultState, {
+  name: "myStore",
+  storage: "indexedDB",
+});
+await store.ready();
+const state = store.current;
 ```
 
 ### 复杂状态示例
@@ -85,6 +109,7 @@ interface UserState {
   };
 }
 
+// 创建全局状态实例
 const userStore = new Echo<UserState>(
   {
     profile: { name: "", age: 0 },
@@ -103,6 +128,7 @@ const userStore = new Echo<UserState>(
 
 // 在组件中选择性使用状态
 function UserProfile() {
+  // 直接使用 use 方法，不需要手动处理异步初始化
   const name = userStore.use((state) => state.profile.name);
   const theme = userStore.use((state) => state.preferences.theme);
 
@@ -197,7 +223,9 @@ interface EchoOptions<T> {
 | `set(partial)`        | 更新部分状态               |
 | `set(updater)`        | 使用函数更新状态           |
 | `reset()`             | 重置为默认状态             |
-| `current`             | 获取当前状态               |
+| `current`             | 获取当前状态（同步）       |
+| `getCurrent()`        | 获取当前状态（异步）       |
+| `ready()`             | 等待初始化完成             |
 | `subscribe(listener)` | 订阅状态变化               |
 | `destroy()`           | 销毁实例，清理资源         |
 
@@ -205,9 +233,10 @@ interface EchoOptions<T> {
 
 1. 为状态定义明确的类型接口
 2. 使用选择器来优化性能
-3. 适当使用持久化存储
-4. 及时清理不再使用的订阅
-5. 在组件卸载时调用 destroy 方法
+3. 使用 IndexedDB 时，务必等待初始化完成
+4. 适当使用持久化存储
+5. 及时清理不再使用的订阅
+6. 在组件卸载时调用 destroy 方法
 
 ## License
 

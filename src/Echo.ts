@@ -127,6 +127,10 @@ class LocalStorageAdapter implements Storage {
 class Echo<T extends Record<string, any>> {
   /** 当前状态 */
   private state: T;
+  /** 初始化完成的Promise */
+  private readyPromise: Promise<void>;
+  /** 是否已经完成初始化 */
+  private isInitialized = false;
   /** 监听器集合 */
   private listeners: Set<Listener<T>> = new Set();
   /** 存储实例 */
@@ -152,18 +156,30 @@ class Echo<T extends Record<string, any>> {
         ? new IndexedDBStorage(options.name)
         : new LocalStorageAdapter();
 
-    // 初始化持久化
-    if (options.name) {
-      this.hydrate();
-    }
-
-    // 初始化同步
-    if (options.sync && options.name) {
-      this.initSync();
-    }
+    // 初始化ready Promise
+    this.readyPromise = this.initialize();
 
     // 创建 hook 函数
     this.hookRef = this.createHook();
+  }
+
+  private async initialize(): Promise<void> {
+    try {
+      // 初始化持久化
+      if (this.options.name) {
+        await this.hydrate();
+      }
+
+      // 初始化同步
+      if (this.options.sync && this.options.name) {
+        this.initSync();
+      }
+
+      this.isInitialized = true;
+    } catch (error) {
+      console.error("Echo: 初始化失败", error);
+      throw error;
+    }
   }
 
   private async hydrate(): Promise<void> {
@@ -329,9 +345,30 @@ class Echo<T extends Record<string, any>> {
   }
 
   /**
-   * 获取当前状态
+   * 等待初始化完成
+   */
+  public async ready(): Promise<void> {
+    return this.readyPromise;
+  }
+
+  /**
+   * 获取当前状态（异步）
+   */
+  public async getCurrent(): Promise<T> {
+    await this.ready();
+    return this.state;
+  }
+
+  /**
+   * 获取当前状态（同步）
+   * @throws {Error} 如果使用 IndexedDB 且尚未初始化完成
    */
   public get current(): T {
+    if (this.options.storage === "indexedDB" && !this.isInitialized) {
+      throw new Error(
+        "Echo: 使用 IndexedDB 时，请使用 getCurrent() 方法或等待 ready() Promise 完成"
+      );
+    }
     return this.state;
   }
 
@@ -387,14 +424,27 @@ class Echo<T extends Record<string, any>> {
       selector?: (state: T) => Selected
     ): Selected {
       const [, forceUpdate] = useState({});
+      const [isInitialized, setIsInitialized] = useState(self.isInitialized);
 
       useEffect(() => {
+        // 如果未初始化且使用了 IndexedDB，等待初始化完成
+        if (!self.isInitialized && self.options.storage === "indexedDB") {
+          self.ready().then(() => setIsInitialized(true));
+        }
+
         const listener = () => forceUpdate({});
         self.addListener(listener);
         return () => {
           self.removeListener(listener);
         };
       }, []);
+
+      // 如果使用 IndexedDB 且未初始化完成，返回初始状态
+      if (self.options.storage === "indexedDB" && !isInitialized) {
+        return selector
+          ? selector(self.defaultState)
+          : (self.defaultState as unknown as Selected);
+      }
 
       /* 获取当前状态 */
       const state = self.current;
