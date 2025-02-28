@@ -45,6 +45,7 @@ try {
     if ($push -eq 'Y' -or $push -eq 'y') {
         git push origin $currentBranch
         Write-Host "`n提交并推送完成！" -ForegroundColor Green
+        Write-Host "`n请等待完成npm仓库的自动化部署..." -ForegroundColor Green
     } else {
         Write-Host "`n本地提交完成，没有推送到远程。" -ForegroundColor Yellow
     }

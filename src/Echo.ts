@@ -424,14 +424,8 @@ class Echo<T extends Record<string, any>> {
       selector?: (state: T) => Selected
     ): Selected {
       const [, forceUpdate] = useState({});
-      const [isInitialized, setIsInitialized] = useState(self.isInitialized);
 
       useEffect(() => {
-        // 如果未初始化且使用了 IndexedDB，等待初始化完成
-        if (!self.isInitialized && self.options.storage === "indexedDB") {
-          self.ready().then(() => setIsInitialized(true));
-        }
-
         const listener = () => forceUpdate({});
         self.addListener(listener);
         return () => {
@@ -439,11 +433,9 @@ class Echo<T extends Record<string, any>> {
         };
       }, []);
 
-      // 如果使用 IndexedDB 且未初始化完成，返回初始状态
-      if (self.options.storage === "indexedDB" && !isInitialized) {
-        return selector
-          ? selector(self.defaultState)
-          : (self.defaultState as unknown as Selected);
+      // 如果使用 IndexedDB 且未初始化完成，抛出 Promise
+      if (self.options.storage === "indexedDB" && !self.isInitialized) {
+        throw self.readyPromise;
       }
 
       /* 获取当前状态 */

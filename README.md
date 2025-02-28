@@ -50,7 +50,9 @@ console.log(counter.current); // { count: 2 }
 
 ```typescript
 import { Echo } from "echo-state";
+import { Suspense } from "react";
 
+// 1. 基础用法（使用 localStorage 时）
 function Counter() {
   // 使用完整状态
   const state = counter.use();
@@ -66,9 +68,18 @@ function Counter() {
     </div>
   );
 }
+
+// 2. 使用 IndexedDB 时配合 Suspense 使用
+function App() {
+  return (
+    <Suspense fallback={<div>加载中...</div>}>
+      <Counter />
+    </Suspense>
+  );
+}
 ```
 
-> 注意：当使用 IndexedDB 存储时，`use` 方法会自动处理异步初始化。在初始化完成前，会返回默认状态。
+> 注意：当使用 IndexedDB 存储时，`use` 方法会在初始化完成前抛出 Promise，可以配合 React.Suspense 使用。
 
 ### 异步初始化处理
 
@@ -137,6 +148,15 @@ function UserProfile() {
       <h1>Welcome, {name}</h1>
       <p>Current theme: {theme}</p>
     </div>
+  );
+}
+
+// 使用 Suspense 包裹
+function App() {
+  return (
+    <Suspense fallback={<div>加载中...</div>}>
+      <UserProfile />
+    </Suspense>
   );
 }
 ```
