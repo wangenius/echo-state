@@ -423,23 +423,55 @@ class Echo<T extends Record<string, any>> {
     return function useEcho<Selected = T>(
       selector?: (state: T) => Selected
     ): Selected {
+      // 使用useState来存储和更新状态
+      const [state, setState] = useState<T | null>(
+        self.isInitialized ? self.state : null
+      );
+
+      // 使用useState来强制更新组件
       const [, forceUpdate] = useState({});
 
+      // 初始化状态
       useEffect(() => {
-        const listener = () => forceUpdate({});
+        // 如果已经初始化完成，直接使用当前状态
+        if (self.isInitialized) {
+          setState(self.state);
+          return;
+        }
+
+        // 如果未初始化完成，等待初始化完成后更新状态
+        let isMounted = true;
+        self.ready().then(() => {
+          if (isMounted) {
+            setState(self.state);
+          }
+        });
+
+        return () => {
+          isMounted = false;
+        };
+      }, [self.isInitialized]);
+
+      // 订阅状态变化
+      useEffect(() => {
+        const listener = () => {
+          setState(self.state);
+          forceUpdate({});
+        };
         self.addListener(listener);
         return () => {
           self.removeListener(listener);
         };
       }, []);
 
-      // 如果使用 IndexedDB 且未初始化完成，抛出 Promise
-      if (self.options.storage === "indexedDB" && !self.isInitialized) {
-        throw self.readyPromise;
+      // 如果状态尚未加载，返回默认状态
+      if (state === null) {
+        return selector
+          ? selector(self.defaultState)
+          : (self.defaultState as unknown as Selected);
       }
 
-      /* 获取当前状态 */
-      const state = self.current;
+      // 返回选择器处理后的状态或完整状态
       return selector ? selector(state) : (state as unknown as Selected);
     };
   }
