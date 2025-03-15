@@ -6,7 +6,7 @@ import { AsyncDataTest } from "./asyncDataTest";
 // 主应用组件
 export function App() {
   const [activeTab, setActiveTab] = useState<"counter" | "asyncData">(
-    "counter"
+    "asyncData"
   );
 
   return (

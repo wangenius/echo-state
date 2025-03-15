@@ -34,13 +34,11 @@ const fetchUsers = async () => {
   await new Promise((resolve) => setTimeout(resolve, 1500));
 
   // 模拟API响应
-  return [
-    { id: 1, name: "张三", email: "zhangsan@example.com" },
-    { id: 2, name: "李四", email: "lisi@example.com" },
-    { id: 3, name: "王五", email: "wangwu@example.com" },
-    { id: 4, name: "赵六", email: "zhaoliu@example.com" },
-    { id: 5, name: "钱七", email: "qianqi@example.com" },
-  ];
+  return Array.from({ length: 5000 }, (_, i) => ({
+    id: i + 1,
+    name: `用户${i + 1}`,
+    email: `user${i + 1}@example.com`,
+  }));
 };
 
 // 异步数据测试组件
