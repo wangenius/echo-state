@@ -34,7 +34,7 @@ const fetchUsers = async () => {
   await new Promise((resolve) => setTimeout(resolve, 1500));
 
   // 模拟API响应
-  return Array.from({ length: 5000 }, (_, i) => ({
+  return Array.from({ length: 6000 }, (_, i) => ({
     id: i + 1,
     name: `用户${i + 1}`,
     email: `user${i + 1}@example.com`,
