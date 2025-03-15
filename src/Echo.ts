@@ -450,7 +450,7 @@ class Echo<T extends Record<string, any>> {
         return () => {
           isMounted = false;
         };
-      }, [self.isInitialized]);
+      }, []); // 移除对self.isInitialized的依赖，只在组件挂载时执行一次
 
       // 订阅状态变化
       useEffect(() => {
