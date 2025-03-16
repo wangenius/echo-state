@@ -9,8 +9,8 @@ const echo = new IDBE(
     items: [] as string[],
   },
   {
-    dbName: "test-db",
-    objectStore: "test-store",
+    database: "test-db",
+    object: "test-store",
     sync: true,
   }
 );

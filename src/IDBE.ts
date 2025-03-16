@@ -15,9 +15,9 @@ type SetOptions = {
  */
 export interface IDBEOptions<T = any> {
   /** 状态名称，用于持久化存储 */
-  dbName: string;
+  database: string;
   /** 对象存储空间名称 */
-  objectStore?: string;
+  object?: string;
   /** 状态变化回调函数，在每次状态更新后调用 */
   onChange?: (newState: T, oldState: T) => void;
   /** 是否启用跨窗口同步 */
@@ -45,7 +45,7 @@ export class IDBE<T extends Record<string, any>> {
   /** 监听器集合 */
   private listeners: Set<Listener<T>> = new Set();
   /** 数据库实例 */
-  private db: IDBDatabase | null = null;
+  private database: IDBDatabase | null = null;
   /** 数据库名称 */
   private dbName: string;
   /** 存储对象名称 */
@@ -64,8 +64,8 @@ export class IDBE<T extends Record<string, any>> {
     private readonly options: IDBEOptions<T>
   ) {
     this.state = { ...defaultState };
-    this.dbName = options.dbName;
-    this.storeName = options.objectStore || "echo-store";
+    this.dbName = options.database;
+    this.storeName = options.object || "echo-store";
 
     // 初始化ready Promise
     this.readyPromise = this.initialize();
@@ -92,9 +92,9 @@ export class IDBE<T extends Record<string, any>> {
   }
 
   private async initDB(): Promise<void> {
-    if (this.db) return;
+    if (this.database) return;
 
-    this.db = await new Promise((resolve, reject) => {
+    this.database = await new Promise((resolve, reject) => {
       const request = indexedDB.open(this.dbName, 1);
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
@@ -109,13 +109,13 @@ export class IDBE<T extends Record<string, any>> {
 
   private async hydrate(): Promise<void> {
     try {
-      const savedState = await this.getItem<T>(this.options.dbName);
+      const savedState = await this.getItem<T>(this.options.database);
       if (savedState) {
         this.isHydrating = true;
         this.set(savedState);
         this.isHydrating = false;
       } else {
-        await this.setItem(this.options.dbName, this.state);
+        await this.setItem(this.options.database, this.state);
       }
     } catch (error) {
       console.error("IndexedEcho: 状态恢复失败", error);
@@ -126,11 +126,11 @@ export class IDBE<T extends Record<string, any>> {
     if (typeof window === "undefined") return;
 
     try {
-      this.syncChannel = new BroadcastChannel(this.options.dbName);
+      this.syncChannel = new BroadcastChannel(this.options.database);
       this.syncChannel.onmessage = async (event) => {
         if (event.data?.type === "state-update") {
           this.set(event.data.state, { isFromSync: true, replace: true });
-          await this.setItem(this.options.dbName, event.data.state);
+          await this.setItem(this.options.database, event.data.state);
         } else if (event.data?.type === "state-delete") {
           this.set(
             (state) => {
@@ -140,7 +140,7 @@ export class IDBE<T extends Record<string, any>> {
             },
             { isFromSync: true, replace: true }
           );
-          await this.setItem(this.options.dbName, this.state);
+          await this.setItem(this.options.database, this.state);
         }
       };
     } catch (error) {
@@ -151,7 +151,10 @@ export class IDBE<T extends Record<string, any>> {
   private async getItem<T>(key: string): Promise<T | null> {
     await this.initDB();
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(this.storeName, "readonly");
+      const transaction = this.database!.transaction(
+        this.storeName,
+        "readonly"
+      );
       const store = transaction.objectStore(this.storeName);
       const request = store.get(key);
       request.onsuccess = () => resolve(request.result);
@@ -162,7 +165,10 @@ export class IDBE<T extends Record<string, any>> {
   private async setItem<T>(key: string, value: T): Promise<void> {
     await this.initDB();
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(this.storeName, "readwrite");
+      const transaction = this.database!.transaction(
+        this.storeName,
+        "readwrite"
+      );
       const store = transaction.objectStore(this.storeName);
       const request = store.put(value, key);
       request.onsuccess = () => resolve();
@@ -173,7 +179,10 @@ export class IDBE<T extends Record<string, any>> {
   private async removeItem(key: string): Promise<void> {
     await this.initDB();
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(this.storeName, "readwrite");
+      const transaction = this.database!.transaction(
+        this.storeName,
+        "readwrite"
+      );
       const store = transaction.objectStore(this.storeName);
       const request = store.delete(key);
       request.onsuccess = () => resolve();
@@ -199,7 +208,7 @@ export class IDBE<T extends Record<string, any>> {
     this.state = finalState;
 
     if (!this.isHydrating) {
-      this.setItem(this.options.dbName, this.state).catch((error) => {
+      this.setItem(this.options.database, this.state).catch((error) => {
         console.error("IndexedEcho: 状态保存失败", error);
       });
     }
@@ -250,7 +259,7 @@ export class IDBE<T extends Record<string, any>> {
     this.state = newState;
 
     if (!this.isHydrating) {
-      this.setItem(this.options.dbName, this.state).catch((error) => {
+      this.setItem(this.options.database, this.state).catch((error) => {
         console.error("IndexedEcho: 状态保存失败", error);
       });
     }
@@ -375,8 +384,8 @@ export class IDBE<T extends Record<string, any>> {
    */
   public async switchDB(name: string): Promise<void> {
     // 关闭当前数据库连接
-    this.db?.close();
-    this.db = null;
+    this.database?.close();
+    this.database = null;
 
     // 更新数据库名称
     this.dbName = name;
@@ -406,8 +415,8 @@ export class IDBE<T extends Record<string, any>> {
     this.storeName = name;
 
     // 关闭当前数据库连接
-    this.db?.close();
-    this.db = null;
+    this.database?.close();
+    this.database = null;
 
     // 重新初始化
     this.isInitialized = false;
