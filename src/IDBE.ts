@@ -65,7 +65,7 @@ export class IDBE<T extends Record<string, any>> {
   ) {
     this.state = { ...defaultState };
     this.dbName = options.database;
-    this.storeName = options.object || "echo-store";
+    this.storeName = options.object || "ECHO-STORE";
 
     // 初始化ready Promise
     this.readyPromise = this.initialize();
