@@ -76,12 +76,15 @@ export class IDBE<T extends Record<string, any>> {
 
   private async initialize(): Promise<void> {
     try {
-      await this.initDB();
-      await this.hydrate();
+      // 如果 database 为空字符串，跳过数据库初始化
+      if (this.dbName !== "") {
+        await this.initDB();
+        await this.hydrate();
 
-      // 初始化同步
-      if (this.options.sync) {
-        this.initSync();
+        // 初始化同步
+        if (this.options.sync) {
+          this.initSync();
+        }
       }
 
       this.isInitialized = true;
@@ -149,6 +152,7 @@ export class IDBE<T extends Record<string, any>> {
   }
 
   private async getItem<T>(key: string): Promise<T | null> {
+    if (this.dbName === "") return null;
     await this.initDB();
     return new Promise((resolve, reject) => {
       const transaction = this.database!.transaction(
@@ -163,6 +167,7 @@ export class IDBE<T extends Record<string, any>> {
   }
 
   private async setItem<T>(key: string, value: T): Promise<void> {
+    if (this.dbName === "") return;
     await this.initDB();
     return new Promise((resolve, reject) => {
       const transaction = this.database!.transaction(
@@ -177,6 +182,7 @@ export class IDBE<T extends Record<string, any>> {
   }
 
   private async removeItem(key: string): Promise<void> {
+    if (this.dbName === "") return;
     await this.initDB();
     return new Promise((resolve, reject) => {
       const transaction = this.database!.transaction(
@@ -207,7 +213,7 @@ export class IDBE<T extends Record<string, any>> {
 
     this.state = finalState;
 
-    if (!this.isHydrating) {
+    if (!this.isHydrating && this.dbName !== "") {
       this.setItem(this.options.database, this.state).catch((error) => {
         console.error("IndexedEcho: 状态保存失败", error);
       });
@@ -258,7 +264,7 @@ export class IDBE<T extends Record<string, any>> {
 
     this.state = newState;
 
-    if (!this.isHydrating) {
+    if (!this.isHydrating && this.dbName !== "") {
       this.setItem(this.options.database, this.state).catch((error) => {
         console.error("IndexedEcho: 状态保存失败", error);
       });
@@ -382,10 +388,14 @@ export class IDBE<T extends Record<string, any>> {
    * 切换数据库
    * @param name 新的数据库名称
    */
-  public async switchDB(name: string, state?: Partial<T>): Promise<void> {
-    // 关闭当前数据库连接
-    this.database?.close();
-    this.database = null;
+  public async switchDB(name: string): Promise<void> {
+    const oldName = this.dbName;
+
+    // 如果当前数据库不为空，需要关闭连接并清理
+    if (oldName !== "") {
+      this.database?.close();
+      this.database = null;
+    }
 
     // 更新数据库名称
     this.dbName = name;
@@ -393,13 +403,18 @@ export class IDBE<T extends Record<string, any>> {
     // 重新初始化
     this.isInitialized = false;
     // 重置状态为默认值
-    this.state = { ...this.defaultState, ...state };
+    this.state = { ...this.defaultState };
     this.readyPromise = this.initialize();
 
     // 更新同步通道
     if (this.syncChannel) {
       this.syncChannel.close();
-      this.initSync();
+      // 只有在新数据库名不为空时才重新初始化同步
+      if (name !== "") {
+        this.initSync();
+      } else {
+        this.syncChannel = null;
+      }
     }
 
     // 通知所有监听器
