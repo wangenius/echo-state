@@ -382,7 +382,7 @@ export class IDBE<T extends Record<string, any>> {
    * 切换数据库
    * @param name 新的数据库名称
    */
-  public async switchDB(name: string): Promise<void> {
+  public async switchDB(name: string, state?: Partial<T>): Promise<void> {
     // 关闭当前数据库连接
     this.database?.close();
     this.database = null;
@@ -393,7 +393,7 @@ export class IDBE<T extends Record<string, any>> {
     // 重新初始化
     this.isInitialized = false;
     // 重置状态为默认值
-    this.state = { ...this.defaultState };
+    this.state = { ...this.defaultState, ...state };
     this.readyPromise = this.initialize();
 
     // 更新同步通道
