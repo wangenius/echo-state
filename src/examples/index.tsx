@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Counter } from "./counter";
 import { AsyncDataTest } from "./asyncDataTest";
+import { IndexedEchoTest } from "./indexedEchoTest";
 
 // 主应用组件
 export function App() {
-  const [activeTab, setActiveTab] = useState<"counter" | "asyncData">(
-    "asyncData"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "counter" | "asyncData" | "indexedEcho"
+  >("indexedEcho");
 
   return (
     <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "2rem" }}>
@@ -66,10 +67,35 @@ export function App() {
         >
           异步数据测试
         </button>
+        <button
+          onClick={() => setActiveTab("indexedEcho")}
+          style={{
+            padding: "0.75rem 1.5rem",
+            background: "transparent",
+            border: "none",
+            borderBottom: `2px solid ${
+              activeTab === "indexedEcho" ? "#2563eb" : "transparent"
+            }`,
+            color: activeTab === "indexedEcho" ? "#2563eb" : "#64748b",
+            fontWeight: activeTab === "indexedEcho" ? "bold" : "normal",
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }}
+        >
+          IndexedEcho测试
+        </button>
       </div>
 
       {/* 内容区域 */}
-      <div>{activeTab === "counter" ? <Counter /> : <AsyncDataTest />}</div>
+      <div>
+        {activeTab === "counter" ? (
+          <Counter />
+        ) : activeTab === "asyncData" ? (
+          <AsyncDataTest />
+        ) : (
+          <IndexedEchoTest />
+        )}
+      </div>
 
       {/* 页脚 */}
       <footer
