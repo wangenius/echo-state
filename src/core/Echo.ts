@@ -199,7 +199,11 @@ export class Echo<T extends Record<string, any>> {
   }
 
   public get current(): T {
-    if (!this.isInitialized) {
+    // 只有在使用IndexedDB且未初始化时才抛出错误
+    if (
+      this.storageAdapter instanceof IndexedDBAdapter &&
+      !this.isInitialized
+    ) {
       throw new Error(
         "Echo Core: 请使用 getCurrent() 方法或等待 ready() Promise 完成"
       );
@@ -340,6 +344,7 @@ export class Echo<T extends Record<string, any>> {
   public temporary(): this {
     this.cleanup();
     this.readyPromise = Promise.resolve();
+    this.isInitialized = true;
     return this;
   }
 
