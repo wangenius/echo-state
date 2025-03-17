@@ -139,7 +139,7 @@ function generateApiSidebar(): SidebarItem[] {
 export default defineConfig({
   title: "Echo",
   description: "轻量级React状态管理库",
-  base: process.env.NODE_ENV === "production" ? "/" : "/echo/",
+  base: "/echo-state/",
   head: [["link", { rel: "icon", href: "./icon.png" }]],
   cleanUrls: true,
   themeConfig: {
