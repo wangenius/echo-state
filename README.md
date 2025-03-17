@@ -1,16 +1,15 @@
 # echo-state
 
-一个轻量级的状态管理库，支持本地存储、跨窗口同步和 React 集成。
+一个轻量级的 React 状态管理库，简单、灵活、高效。
 
 ## 特性
 
-- 🚀 轻量级，易于使用
-- 💾 支持多种存储方式 (localStorage/indexedDB)
-- 🔄 支持状态变更订阅
-- 📦 完整的 TypeScript 支持
-- 🎯 支持选择性状态订阅
-- 🔄 支持跨窗口状态同步
-- ⚛️ 原生支持 React Hooks
+- 💾 **多种存储模式** - 支持临时存储、LocalStorage 和 IndexedDB 三种存储模式，满足不同场景需求
+- 🔄 **跨窗口状态同步** - 内置跨窗口状态同步功能，多标签页应用无需额外配置
+- ⚛️ **React Hooks 集成** - 提供简洁易用的 React Hooks API，轻松在组件中使用和订阅状态
+- 🔍 **选择器支持** - 通过选择器精确订阅状态的特定部分，优化性能，避免不必要的重渲染
+- 📦 **轻量无依赖** - 体积小巧，无外部依赖，为您的应用提供高效的状态管理能力
+- 🛠️ **TypeScript 支持** - 完全使用 TypeScript 编写，提供完整的类型定义，增强开发体验
 
 ## 安装
 
@@ -18,245 +17,83 @@
 npm install echo-state
 ```
 
-## 快速开始
+## 基础用法
 
-### 基础使用
+### 创建状态
 
 ```typescript
 import { Echo } from "echo-state";
 
-// 定义状态类型
-interface CounterState {
-  count: number;
-}
-
-// 创建状态实例
-const counter = new Echo<CounterState>(
-  { count: 0 }, // 初始状态
-  { name: "counter" } // 配置选项
-);
-
-// 更新状态
-counter.set({ count: 1 });
-
-// 使用函数更新状态
-counter.set((state) => ({ count: state.count + 1 }));
-
-// 获取当前状态
-console.log(counter.current); // { count: 2 }
+// 创建一个Echo实例
+const userStore = new Echo({
+  name: "",
+  age: 0,
+  isLoggedIn: false,
+});
 ```
 
 ### 在 React 中使用
 
-```typescript
-import { Echo } from "echo-state";
-import { Suspense } from "react";
-
-// 1. 基础用法（使用 localStorage 时）
-function Counter() {
-  // 使用完整状态
-  const state = counter.use();
-  // 或者只订阅部分状态
-  const count = counter.use((state) => state.count);
+```tsx
+function UserProfile() {
+  // 使用Echo的use hook获取状态
+  const state = userStore.use();
 
   return (
     <div>
-      <p>Count: {count}</p>
-      <button onClick={() => counter.set((s) => ({ count: s.count + 1 }))}>
-        增加
+      <p>用户名: {state.name}</p>
+      <p>年龄: {state.age}</p>
+      <button onClick={() => userStore.set({ name: "张三" })}>
+        设置用户名
       </button>
     </div>
   );
 }
+```
 
-// 2. 使用 IndexedDB 时配合 Suspense 使用
-function App() {
-  return (
-    <Suspense fallback={<div>加载中...</div>}>
-      <Counter />
-    </Suspense>
-  );
+### 使用选择器优化性能
+
+```tsx
+function UserName() {
+  // 只订阅name属性的变化
+  const name = userStore.use((state) => state.name);
+
+  return <p>用户名: {name}</p>;
 }
 ```
 
-> 注意：当使用 IndexedDB 存储时，`use` 方法会在初始化完成前抛出 Promise，可以配合 React.Suspense 使用。
-
-### 异步初始化处理
-
-当使用 IndexedDB 存储时，初始化是异步的。Echo 提供了两种方式在非 React 环境中处理异步初始化：
+## 存储模式
 
 ```typescript
-// 方式1：使用异步方法获取状态
-const store = new Echo(defaultState, {
-  name: "myStore",
-  storage: "indexedDB",
-});
-const state = await store.getCurrent();
+// 临时存储（默认）
+userStore.temporary();
 
-// 方式2：等待初始化完成后再使用
-const store = new Echo(defaultState, {
-  name: "myStore",
-  storage: "indexedDB",
-});
-await store.ready();
-const state = store.current;
-```
-
-### 复杂状态示例
-
-```typescript
-interface UserState {
-  profile: {
-    name: string;
-    age: number;
-  };
-  preferences: {
-    theme: "light" | "dark";
-    language: string;
-  };
-  notifications: {
-    enabled: boolean;
-    items: Array<{ id: string; message: string }>;
-  };
-}
-
-// 创建全局状态实例
-const userStore = new Echo<UserState>(
-  {
-    profile: { name: "", age: 0 },
-    preferences: { theme: "light", language: "zh" },
-    notifications: { enabled: true, items: [] },
-  },
-  {
-    name: "userStore",
-    storage: "indexedDB",
-    sync: true,
-    onChange: (state) => {
-      console.log("用户状态更新:", state);
-    },
-  }
-);
-
-// 在组件中选择性使用状态
-function UserProfile() {
-  // 直接使用 use 方法，不需要手动处理异步初始化
-  const name = userStore.use((state) => state.profile.name);
-  const theme = userStore.use((state) => state.preferences.theme);
-
-  return (
-    <div>
-      <h1>Welcome, {name}</h1>
-      <p>Current theme: {theme}</p>
-    </div>
-  );
-}
-
-// 使用 Suspense 包裹
-function App() {
-  return (
-    <Suspense fallback={<div>加载中...</div>}>
-      <UserProfile />
-    </Suspense>
-  );
-}
-```
-
-## 高级用法
-
-### 状态持久化
-
-Echo 支持两种存储方式，可以根据需求选择：
-
-```typescript
-// 使用 LocalStorage (默认)
-const localStore = new Echo(defaultState, {
-  name: "myStore",
-  storage: "localStorage",
+// LocalStorage存储
+userStore.localStorage({
+  name: "user-store",
+  sync: true, // 跨窗口同步
 });
 
-// 使用 IndexedDB
-const dbStore = new Echo(defaultState, {
-  name: "myStore",
-  storage: "indexedDB",
-});
-```
-
-### 跨窗口同步
-
-启用跨窗口同步后，状态会在不同标签页之间自动同步：
-
-```typescript
-const syncedStore = new Echo(defaultState, {
-  name: "syncedStore",
+// IndexedDB存储
+userStore.indexed({
+  name: "user-store",
+  storeName: "userData",
+  version: 1,
   sync: true,
 });
-
-// 在任意窗口更新状态，其他窗口都会同步更新
-syncedStore.set({ value: "新值" });
 ```
-
-### 状态订阅
-
-```typescript
-// 订阅状态变化
-const unsubscribe = store.subscribe((state) => {
-  console.log("状态已更新:", state);
-});
-
-// 取消订阅
-unsubscribe();
-```
-
-### 完整的状态重置
-
-```typescript
-// 重置为初始状态
-store.reset();
-```
-
-### 资源清理
-
-```typescript
-// 清理订阅、存储和同步
-store.destroy();
-```
-
-## API 参考
-
-### Echo 构造选项
-
-```typescript
-interface EchoOptions<T> {
-  name?: string; // 状态名称，用于持久化存储
-  storage?: "localStorage" | "indexedDB"; // 存储类型
-  onChange?: (state: T) => void; // 状态变化回调
-  sync?: boolean; // 是否启用跨窗口同步
-}
-```
-
-### 主要方法
-
-| 方法                  | 描述                       |
-| --------------------- | -------------------------- |
-| `use()`               | React Hook，获取完整状态   |
-| `use(selector)`       | React Hook，选择性获取状态 |
-| `set(partial)`        | 更新部分状态               |
-| `set(updater)`        | 使用函数更新状态           |
-| `reset()`             | 重置为默认状态             |
-| `current`             | 获取当前状态（同步）       |
-| `getCurrent()`        | 获取当前状态（异步）       |
-| `ready()`             | 等待初始化完成             |
-| `subscribe(listener)` | 订阅状态变化               |
-| `destroy()`           | 销毁实例，清理资源         |
 
 ## 最佳实践
 
-1. 为状态定义明确的类型接口
-2. 使用选择器来优化性能
-3. 使用 IndexedDB 时，务必等待初始化完成
-4. 适当使用持久化存储
-5. 及时清理不再使用的订阅
-6. 在组件卸载时调用 destroy 方法
+1. 为不同功能创建独立的 Echo 实例
+2. 根据数据特性选择合适的存储模式
+3. 使用选择器避免不必要的重渲染
+4. 使用`ready()`确保状态已从存储加载
+5. 组件卸载时取消订阅或清理资源
+
+## 文档
+
+查看完整文档和 API 参考：[Echo 文档](https://wangenius.github.io/echo-state/)
 
 ## License
 
