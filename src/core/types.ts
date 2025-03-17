@@ -1,5 +1,5 @@
 /* 存储适配器接口 */
-export interface StorageAdapter {
+export interface StorageAdapter<T = any> {
   /** 获取存储名称 */
   readonly name: string;
 
@@ -7,10 +7,10 @@ export interface StorageAdapter {
   init(): Promise<void>;
 
   /** 获取数据 */
-  getItem<T>(): Promise<T | null>;
+  getItem(): Promise<T | null>;
 
   /** 设置数据 */
-  setItem<T>(value: T): Promise<void>;
+  setItem(value: T): Promise<void>;
 
   /** 删除数据 */
   removeItem(): Promise<void>;
@@ -36,4 +36,15 @@ export interface IndexedDBConfig extends StorageConfig {
   database: string;
   /** 对象存储空间名称，默认是 'echo-state' */
   object?: string;
+}
+
+/* 状态更新器类型 - 改进版 */
+export type StateUpdater<T> = (
+  state: T
+) => T extends Record<string, any> ? Partial<T> | T : T;
+
+/* 设置选项类型 */
+export interface SetOptions {
+  isFromSync?: boolean;
+  replace?: boolean;
 }

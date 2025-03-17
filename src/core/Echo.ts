@@ -10,19 +10,18 @@
  * - 支持选择器
  */
 import { useEffect, useState } from "react";
-import { StorageAdapter, StorageConfig, IndexedDBConfig } from "./types";
+import {
+  StorageAdapter,
+  StorageConfig,
+  IndexedDBConfig,
+  StateUpdater,
+  SetOptions,
+} from "./types";
 import { IndexedDBAdapter } from "../storage/IndexedDBAdapter";
 import { LocalStorageAdapter } from "../storage/LocalStorageAdapter";
 
 /* 监听器类型 */
 type Listener<T> = (state: T) => void;
-/* 状态更新器类型 */
-type StateUpdater<T> = (state: T) => Partial<T>;
-/* 设置选项类型 */
-type SetOptions = {
-  isFromSync?: boolean;
-  replace?: boolean;
-};
 
 /**
  * Echo 状态管理类
@@ -35,7 +34,7 @@ type SetOptions = {
  * - 支持状态订阅
  * - 支持选择器
  */
-export class Echo<T extends Record<string, any> | null> {
+export class Echo<T extends Record<string, any> | null | string | number> {
   /** 当前状态 */
   protected state: T;
   /** 初始化完成的Promise */
@@ -45,7 +44,7 @@ export class Echo<T extends Record<string, any> | null> {
   /** 监听器集合 */
   protected listeners: Set<Listener<T>> = new Set();
   /** 存储适配器 */
-  protected storageAdapter: StorageAdapter | null = null;
+  protected storageAdapter: StorageAdapter<T> | null = null;
   /** 跨窗口同步通道 */
   protected syncChannel: BroadcastChannel | null = null;
   /** 是否正在恢复状态 */
@@ -59,8 +58,10 @@ export class Echo<T extends Record<string, any> | null> {
     // 确保类型安全，处理null情况
     if (defaultState === null) {
       this.state = null as T;
-    } else {
+    } else if (typeof defaultState === "object" && defaultState !== null) {
       this.state = { ...defaultState } as T;
+    } else {
+      this.state = defaultState;
     }
     this.readyPromise = Promise.resolve();
     this.hookRef = this.createHook();
@@ -70,13 +71,22 @@ export class Echo<T extends Record<string, any> | null> {
     if (!this.storageAdapter) return;
 
     try {
-      const savedState = await this.storageAdapter.getItem<T>();
+      const savedState = await this.storageAdapter.getItem();
       if (savedState) {
         this.isHydrating = true;
         this.set(savedState);
         this.isHydrating = false;
       } else {
-        this.state = { ...this.defaultState };
+        if (this.defaultState === null) {
+          this.state = null as T;
+        } else if (
+          typeof this.defaultState === "object" &&
+          this.defaultState !== null
+        ) {
+          this.state = { ...this.defaultState } as T;
+        } else {
+          this.state = this.defaultState;
+        }
         await this.storageAdapter.setItem(this.state);
       }
       this.isInitialized = true;
@@ -107,14 +117,19 @@ export class Echo<T extends Record<string, any> | null> {
             await this.storageAdapter.setItem(event.data.state);
           }
         } else if (event.data?.type === "state-delete") {
-          this.set(
-            (state) => {
-              const newState = { ...state };
-              delete newState?.[event.data.key];
-              return newState;
-            },
-            { isFromSync: true, replace: true }
-          );
+          // 使用类型安全的方式处理状态删除
+          if (typeof this.state === "object" && this.state !== null) {
+            const newState = { ...this.state } as T;
+            if (newState && typeof newState === "object") {
+              delete (newState as any)[event.data.key];
+              this.set(newState, { isFromSync: true, replace: true });
+            }
+          } else if (typeof this.state === "string") {
+            this.set("" as unknown as T, { isFromSync: true, replace: true });
+          } else if (typeof this.state === "number") {
+            this.set(-1 as unknown as T, { isFromSync: true, replace: true });
+          }
+
           if (this.storageAdapter) {
             await this.storageAdapter.setItem(this.state);
           }
@@ -123,6 +138,17 @@ export class Echo<T extends Record<string, any> | null> {
     } catch (error) {
       console.warn("Echo Core: 跨窗口同步初始化失败", error);
     }
+  }
+
+  // 辅助方法，根据类型返回对应的空值
+  private getEmptyValueForType<S>(value: S): S {
+    if (typeof value === "string") {
+      return "" as unknown as S;
+    }
+    if (typeof value === "number") {
+      return -1 as unknown as S;
+    }
+    return value;
   }
 
   public set(
@@ -143,8 +169,10 @@ export class Echo<T extends Record<string, any> | null> {
       finalState = newState as T;
     } else if (this.state === null) {
       finalState = newState as T;
-    } else {
+    } else if (typeof this.state === "object" && this.state !== null) {
       finalState = { ...this.state, ...newState } as T;
+    } else {
+      finalState = newState as T;
     }
 
     const hasChanged = !this.isEqual(oldState, finalState);
@@ -193,13 +221,19 @@ export class Echo<T extends Record<string, any> | null> {
     // 如果状态为null，直接返回
     if (this.state === null) return;
 
-    const newState = { ...this.state };
-    delete newState[key];
+    if (typeof this.state === "object" && this.state !== null) {
+      const newState = { ...this.state };
+      delete newState[key];
+      this.state = newState as T;
+    } else if (
+      typeof this.state === "string" ||
+      typeof this.state === "number"
+    ) {
+      this.state = this.getEmptyValueForType(this.state);
+    }
 
-    const hasChanged = !this.isEqual(oldState, newState);
+    const hasChanged = !this.isEqual(oldState, this.state);
     if (!hasChanged) return;
-
-    this.state = newState as T;
 
     if (!this.isHydrating && this.storageAdapter) {
       this.storageAdapter.setItem(this.state).catch((error) => {
@@ -345,7 +379,7 @@ export class Echo<T extends Record<string, any> | null> {
     this.cleanup();
 
     // 使用新配置重新初始化，保持相同的数据库和对象仓库
-    this.storageAdapter = new IndexedDBAdapter({
+    this.storageAdapter = new IndexedDBAdapter<T>({
       name: name,
       database: database,
       object: object,
@@ -381,7 +415,7 @@ export class Echo<T extends Record<string, any> | null> {
    */
   public localStorage(config: StorageConfig): this {
     this.cleanup();
-    this.storageAdapter = new LocalStorageAdapter(config);
+    this.storageAdapter = new LocalStorageAdapter<T>(config);
     this.readyPromise = this.hydrate();
 
     if (config.sync) {
@@ -397,7 +431,7 @@ export class Echo<T extends Record<string, any> | null> {
    */
   public indexed(config: IndexedDBConfig): this {
     this.cleanup();
-    this.storageAdapter = new IndexedDBAdapter(config);
+    this.storageAdapter = new IndexedDBAdapter<T>(config);
 
     // 保存当前Promise以便可以等待它完成
     const hydratePromise = this.hydrate();
@@ -454,5 +488,99 @@ export class Echo<T extends Record<string, any> | null> {
   }
 }
 
+/**
+ * 使用示例：
+ *
+ * ```typescript
+ * // 1. 对象类型状态示例
+ * interface UserState {
+ *   name: string;
+ *   age: number;
+ *   preferences: {
+ *     theme: string;
+ *     notifications: boolean;
+ *   };
+ * }
+ *
+ * // 创建一个管理用户状态的Echo实例
+ * const userStore = new Echo<UserState>({
+ *   name: "未登录用户",
+ *   age: 0,
+ *   preferences: {
+ *     theme: "light",
+ *     notifications: true,
+ *   },
+ * });
+ *
+ * // 使用LocalStorage存储模式
+ * userStore.localStorage({
+ *   name: "user-store",
+ *   sync: true, // 启用跨窗口同步
+ * });
+ *
+ * // 更新状态
+ * userStore.set({
+ *   name: "张三",
+ *   age: 30,
+ * });
+ *
+ * // 函数式更新
+ * userStore.set((state) => ({
+ *   preferences: {
+ *     ...state.preferences,
+ *     theme: "dark",
+ *   },
+ * }));
+ *
+ * // 获取当前状态
+ * const currentUser = userStore.current;
+ *
+ * // 在React组件中使用
+ * function UserProfile() {
+ *   // 使用整个状态
+ *   const user = userStore.use();
+ *
+ *   // 使用选择器只获取部分状态
+ *   const theme = userStore.use(state => state.preferences.theme);
+ *
+ *   return (
+ *     <div>
+ *       <h1>{user.name}</h1>
+ *       <p>年龄: {user.age}</p>
+ *       <p>主题: {theme}</p>
+ *     </div>
+ *   );
+ * }
+ *
+ * // 2. 简单类型状态示例
+ * const counterStore = new Echo<number>(0);
+ *
+ * // 使用IndexedDB存储模式
+ * counterStore.indexed({
+ *   name: "counter",
+ *   database: "app-db",
+ *   object: "counters",
+ * });
+ *
+ * // 更新状态
+ * counterStore.set(5);
+ *
+ * // 函数式更新
+ * counterStore.set((count) => count + 1);
+ *
+ * // 在React组件中使用
+ * function Counter() {
+ *   const count = counterStore.use();
+ *
+ *   return (
+ *     <div>
+ *       <p>计数: {count}</p>
+ *       <button onClick={() => counterStore.set(count + 1)}>增加</button>
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+
 // 导出类型
-export type { StorageConfig, IndexedDBConfig };
+export type { StorageConfig, IndexedDBConfig, StateUpdater, SetOptions };

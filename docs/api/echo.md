@@ -1,3 +1,8 @@
+---
+title: Echo API 参考
+order: 1
+---
+
 # Echo API 参考
 
 本文档提供了 Echo 状态管理库的完整 API 参考。
@@ -9,7 +14,7 @@
 `Echo<T>` 是状态管理库的核心类，用于创建和管理状态。
 
 ```typescript
-class Echo<T extends Record<string, any>> {
+class Echo<T> {
   constructor(defaultState: T);
 
   // 方法

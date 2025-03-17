@@ -3,7 +3,7 @@ import { StorageAdapter, IndexedDBConfig } from "../core/types";
 /**
  * IndexedDB 存储适配器
  */
-export class IndexedDBAdapter implements StorageAdapter {
+export class IndexedDBAdapter<T = any> implements StorageAdapter<T> {
   private db: IDBDatabase | null = null;
   private objectStoreName: string;
   private databaseName: string;
@@ -45,7 +45,7 @@ export class IndexedDBAdapter implements StorageAdapter {
     });
   }
 
-  async getItem<T>(): Promise<T | null> {
+  async getItem(): Promise<T | null> {
     await this.init();
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(
@@ -59,7 +59,7 @@ export class IndexedDBAdapter implements StorageAdapter {
     });
   }
 
-  async setItem<T>(value: T): Promise<void> {
+  async setItem(value: T): Promise<void> {
     await this.init();
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(
@@ -87,17 +87,14 @@ export class IndexedDBAdapter implements StorageAdapter {
     });
   }
 
+  destroy(): void {
+    this.removeItem();
+    this.close();
+    indexedDB.deleteDatabase(this.databaseName);
+  }
+
   close(): void {
     this.db?.close();
     this.db = null;
-  }
-
-  /**
-   * 销毁数据库
-   */
-  destroy(): void {
-    this.db?.close();
-    this.db = null;
-    indexedDB.deleteDatabase(this.databaseName);
   }
 }

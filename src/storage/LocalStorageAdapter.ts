@@ -3,7 +3,7 @@ import { StorageAdapter, StorageConfig } from "../core/types";
 /**
  * LocalStorage 存储适配器
  */
-export class LocalStorageAdapter implements StorageAdapter {
+export class LocalStorageAdapter<T = any> implements StorageAdapter<T> {
   constructor(private readonly config: StorageConfig) {}
 
   get name(): string {
@@ -14,12 +14,12 @@ export class LocalStorageAdapter implements StorageAdapter {
     // LocalStorage 不需要特殊初始化
   }
 
-  async getItem<T>(): Promise<T | null> {
+  async getItem(): Promise<T | null> {
     const value = localStorage.getItem(this.name);
     return value ? JSON.parse(value) : null;
   }
 
-  async setItem<T>(value: T): Promise<void> {
+  async setItem(value: T): Promise<void> {
     localStorage.setItem(this.name, JSON.stringify(value));
   }
 
