@@ -35,7 +35,7 @@ type SetOptions = {
  * - 支持状态订阅
  * - 支持选择器
  */
-export class Echo<T extends Record<string, any>> {
+export class Echo<T extends Record<string, any> | null> {
   /** 当前状态 */
   protected state: T;
   /** 初始化完成的Promise */
@@ -56,7 +56,12 @@ export class Echo<T extends Record<string, any>> {
     | null = null;
 
   constructor(protected readonly defaultState: T) {
-    this.state = { ...defaultState };
+    // 确保类型安全，处理null情况
+    if (defaultState === null) {
+      this.state = null as T;
+    } else {
+      this.state = { ...defaultState } as T;
+    }
     this.readyPromise = Promise.resolve();
     this.hookRef = this.createHook();
   }
@@ -105,7 +110,7 @@ export class Echo<T extends Record<string, any>> {
           this.set(
             (state) => {
               const newState = { ...state };
-              delete newState[event.data.key];
+              delete newState?.[event.data.key];
               return newState;
             },
             { isFromSync: true, replace: true }
@@ -125,14 +130,22 @@ export class Echo<T extends Record<string, any>> {
     options: SetOptions = {}
   ): void {
     const oldState = this.state;
+
+    // 处理函数式更新
     const newState =
       typeof nextState === "function"
         ? (nextState as StateUpdater<T>)(this.state)
         : nextState;
 
-    const finalState = options.replace
-      ? (newState as T)
-      : { ...this.state, ...newState };
+    // 处理null情况
+    let finalState: T;
+    if (options.replace) {
+      finalState = newState as T;
+    } else if (this.state === null) {
+      finalState = newState as T;
+    } else {
+      finalState = { ...this.state, ...newState } as T;
+    }
 
     const hasChanged = !this.isEqual(oldState, finalState);
     if (!hasChanged) return;
@@ -156,14 +169,13 @@ export class Echo<T extends Record<string, any>> {
   }
 
   protected isEqual(obj1: any, obj2: any): boolean {
+    // 处理相同引用
     if (obj1 === obj2) return true;
-    if (
-      typeof obj1 !== "object" ||
-      typeof obj2 !== "object" ||
-      obj1 === null ||
-      obj2 === null
-    )
-      return false;
+
+    // 处理null或非对象情况
+    if (obj1 === null && obj2 === null) return true;
+    if (obj1 === null || obj2 === null) return false;
+    if (typeof obj1 !== "object" || typeof obj2 !== "object") return false;
 
     const keys1 = Object.keys(obj1);
     const keys2 = Object.keys(obj2);
@@ -177,13 +189,17 @@ export class Echo<T extends Record<string, any>> {
 
   public delete(key: string): void {
     const oldState = this.state;
+
+    // 如果状态为null，直接返回
+    if (this.state === null) return;
+
     const newState = { ...this.state };
     delete newState[key];
 
     const hasChanged = !this.isEqual(oldState, newState);
     if (!hasChanged) return;
 
-    this.state = newState;
+    this.state = newState as T;
 
     if (!this.isHydrating && this.storageAdapter) {
       this.storageAdapter.setItem(this.state).catch((error) => {

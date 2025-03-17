@@ -22,6 +22,7 @@ const asyncDataEcho = new Echo<AsyncDataState>({
 }).indexed({
   name: "async-data-test",
   sync: true,
+  database: "async-data-test",
 });
 
 // 模拟API调用
