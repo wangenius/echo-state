@@ -27,6 +27,7 @@ class Echo<T extends Record<string, any>> {
   localStorage(config: StorageConfig): this;
   indexed(config: IndexedDBConfig): this;
   destroy(): void;
+  switch(name: string): this;
 }
 ```
 
@@ -278,6 +279,50 @@ function UserName() {
 }
 ```
 
+##### switch()
+
+```typescript
+switch(name: string): this
+```
+
+切换存储键名，用于在当前数据库和对象仓库下切换到不同的键名。**仅限于 IndexedDB 方案使用**。
+
+**参数:**
+
+- `name: string` - 新的存储键名
+
+**返回:**
+
+- `this` - 当前实例，用于链式调用
+
+**行为:**
+
+- 如果新键名下有持久化的数据，将加载该数据
+- 如果新键名下没有持久化的数据，将使用默认状态（构造函数中提供的状态）初始化
+
+**示例:**
+
+```typescript
+// 创建 IndexedDB 存储
+const userStore = new Echo({ name: "张三" }).indexed({
+  name: "user-1",
+  database: "user-db",
+});
+
+// 切换到新的键名
+userStore.switch("user-2");
+
+// 链式调用
+userStore
+  .switch("user-3")
+  .ready()
+  .then(() => {
+    console.log("切换完成");
+  });
+```
+
+**注意:** 如果尝试在非 IndexedDB 方案中使用此方法，将抛出异常。
+
 #### 存储模式方法
 
 ##### temporary()
@@ -336,9 +381,9 @@ indexed(config: IndexedDBConfig): this
 **参数:**
 
 - `config: IndexedDBConfig` - IndexedDB 配置
-  - `name: string` - 存储名称
-  - `storeName: string` - 对象仓库名称
-  - `version?: number` - 数据库版本
+  - `name: string` - 存储键名
+  - `database: string` - 数据库名称
+  - `object?: string` - 对象仓库名称，默认为 'echo-state'
   - `sync?: boolean` - 是否跨窗口同步
 
 **返回:**
@@ -350,8 +395,8 @@ indexed(config: IndexedDBConfig): this
 ```typescript
 userStore.indexed({
   name: "user-store",
-  storeName: "userData",
-  version: 1,
+  database: "user-database",
+  object: "userData",
   sync: true,
 });
 ```
@@ -387,8 +432,8 @@ interface StorageConfig {
 
 ```typescript
 interface IndexedDBConfig extends StorageConfig {
-  storeName: string; // 对象仓库名称
-  version?: number; // 数据库版本
+  database: string; // 数据库名称
+  object?: string; // 对象仓库名称，默认是 'echo-state'
 }
 ```
 
@@ -421,12 +466,17 @@ Echo 内部使用存储适配器来实现不同的存储模式。这些适配器
 
 ```typescript
 interface StorageAdapter {
+  readonly name: string;
+  init(): Promise<void>;
   getItem<T>(): Promise<T | null>;
   setItem<T>(value: T): Promise<void>;
+  removeItem(): Promise<void>;
   close(): void;
   destroy(): void;
 }
 ```
+
+实现了`StorageAdapter`接口的适配器：
 
 ### LocalStorageAdapter
 

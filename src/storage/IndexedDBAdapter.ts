@@ -5,27 +5,41 @@ import { StorageAdapter, IndexedDBConfig } from "../core/types";
  */
 export class IndexedDBAdapter implements StorageAdapter {
   private db: IDBDatabase | null = null;
-  private readonly storeName: string;
+  private objectStoreName: string;
+  private databaseName: string;
+  name: string;
 
-  constructor(private readonly config: IndexedDBConfig) {
-    this.storeName = config.storeName || "echo-state";
+  constructor(config: IndexedDBConfig) {
+    this.databaseName = config.database;
+    this.objectStoreName = config.object || "echo-state";
+    this.name = config.name;
   }
 
-  get name(): string {
-    return this.config.name;
+  /**
+   * 获取当前数据库名称
+   */
+  getDatabaseName(): string {
+    return this.databaseName;
+  }
+
+  /**
+   * 获取当前对象仓库名称
+   */
+  getObjectStoreName(): string {
+    return this.objectStoreName;
   }
 
   async init(): Promise<void> {
     if (this.db) return;
 
     this.db = await new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.name, 1);
+      const request = indexedDB.open(this.databaseName, 1);
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains(this.storeName)) {
-          db.createObjectStore(this.storeName);
+        if (!db.objectStoreNames.contains(this.objectStoreName)) {
+          db.createObjectStore(this.objectStoreName);
         }
       };
     });
@@ -34,8 +48,11 @@ export class IndexedDBAdapter implements StorageAdapter {
   async getItem<T>(): Promise<T | null> {
     await this.init();
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(this.storeName, "readonly");
-      const store = transaction.objectStore(this.storeName);
+      const transaction = this.db!.transaction(
+        this.objectStoreName,
+        "readonly"
+      );
+      const store = transaction.objectStore(this.objectStoreName);
       const request = store.get(this.name);
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -45,8 +62,11 @@ export class IndexedDBAdapter implements StorageAdapter {
   async setItem<T>(value: T): Promise<void> {
     await this.init();
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(this.storeName, "readwrite");
-      const store = transaction.objectStore(this.storeName);
+      const transaction = this.db!.transaction(
+        this.objectStoreName,
+        "readwrite"
+      );
+      const store = transaction.objectStore(this.objectStoreName);
       const request = store.put(value, this.name);
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
@@ -56,8 +76,11 @@ export class IndexedDBAdapter implements StorageAdapter {
   async removeItem(): Promise<void> {
     await this.init();
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(this.storeName, "readwrite");
-      const store = transaction.objectStore(this.storeName);
+      const transaction = this.db!.transaction(
+        this.objectStoreName,
+        "readwrite"
+      );
+      const store = transaction.objectStore(this.objectStoreName);
       const request = store.delete(this.name);
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
@@ -75,6 +98,6 @@ export class IndexedDBAdapter implements StorageAdapter {
   destroy(): void {
     this.db?.close();
     this.db = null;
-    indexedDB.deleteDatabase(this.name);
+    indexedDB.deleteDatabase(this.databaseName);
   }
 }

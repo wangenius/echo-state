@@ -7,30 +7,47 @@ const echo = new Echo({
   text: "默认文本",
   items: [] as string[],
 }).indexed({
-  name: "test-db",
+  name: "test-store",
+  database: "test-db", // 数据库名称
+  object: "test-data", // 对象仓库名称
   sync: true,
 });
 
 export function IndexedEchoTest() {
   const state = echo.use();
-  const [dbName, setDbName] = useState("test-db");
-  const [newDbName, setNewDbName] = useState("");
+  const [storeName, setStoreName] = useState("test-store");
   const [newStoreName, setNewStoreName] = useState("");
+  const [newDbName, setNewDbName] = useState("");
   const [newItem, setNewItem] = useState("");
+
+  // 切换存储键名（在同一个数据库和对象仓库下）
+  const handleSwitchStore = async () => {
+    if (newStoreName) {
+      // 使用 switch 方法切换键名
+      echo.switch(newStoreName);
+
+      // 等待数据库初始化完成
+      await echo.ready();
+
+      setStoreName(newStoreName);
+      setNewStoreName("");
+    }
+  };
 
   // 切换数据库
   const handleSwitchDB = async () => {
     if (newDbName) {
       // 直接使用 indexed 方法切换数据库
       echo.indexed({
-        name: newDbName,
+        name: storeName,
+        database: newDbName,
+        object: "test-data",
         sync: true,
       });
 
       // 等待数据库初始化完成
       await echo.ready();
 
-      setDbName(newDbName);
       setNewDbName("");
     }
   };
@@ -77,7 +94,27 @@ export function IndexedEchoTest() {
       <div style={sectionStyle}>
         <h2 style={{ color: "#1e40af", marginBottom: "1rem" }}>数据库信息</h2>
         <div style={{ marginBottom: "1rem" }}>
-          <p>当前数据库：{dbName}</p>
+          <p>当前数据库：{echo.getDatabaseName()}</p>
+          <p>当前存储键名：{storeName}</p>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              marginTop: "0.5rem",
+              marginBottom: "1rem",
+            }}
+          >
+            <input
+              type="text"
+              value={newStoreName}
+              onChange={(e) => setNewStoreName(e.target.value)}
+              placeholder="输入新的存储键名"
+              style={inputStyle}
+            />
+            <button onClick={handleSwitchStore} style={buttonStyle}>
+              切换存储键名
+            </button>
+          </div>
           <div
             style={{
               display: "flex",
@@ -198,9 +235,36 @@ export function IndexedEchoTest() {
           }}
         >
           <li>所有状态变更都会自动保存到 IndexedDB</li>
-          <li>切换数据库或存储空间后，会加载对应空间的数据</li>
+          <li>切换存储键名后，会在同一个数据库下加载对应键名的数据</li>
+          <li>如果新键名下没有持久化的数据，将使用默认状态初始化</li>
+          <li>切换数据库后，会加载新数据库中对应键名的数据</li>
           <li>如果打开多个窗口，状态会自动同步</li>
           <li>刷新页面后，状态会自动恢复</li>
+        </ul>
+      </div>
+
+      <div style={sectionStyle}>
+        <h2 style={{ color: "#1e40af", marginBottom: "1rem" }}>使用提示</h2>
+        <ul
+          style={{
+            color: "#475569",
+            lineHeight: "1.6",
+            paddingLeft: "1.5rem",
+            listStyleType: "disc",
+          }}
+        >
+          <li>
+            <strong>切换存储键名：</strong>{" "}
+            在同一个数据库中使用不同的键名存储数据，适合管理多个用户或项目的数据
+          </li>
+          <li>
+            <strong>切换数据库：</strong>{" "}
+            完全切换到不同的数据库，适合隔离不同类型的数据
+          </li>
+          <li>
+            <strong>注意：</strong>{" "}
+            切换到新的存储键名后，如果该键名下没有数据，将使用默认状态而不是当前状态
+          </li>
         </ul>
       </div>
     </div>

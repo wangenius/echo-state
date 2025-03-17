@@ -80,6 +80,18 @@ export class Echo<T extends Record<string, any>> {
     }
   }
 
+  public getDatabaseName(): string {
+    if (!this.storageAdapter) {
+      throw new Error("Echo Core: 请先设置存储模式");
+    }
+    if (!(this.storageAdapter instanceof IndexedDBAdapter)) {
+      throw new Error(
+        "Echo Core: getDatabaseName 方法仅限于 IndexedDB 方案使用"
+      );
+    }
+    return this.storageAdapter.getDatabaseName();
+  }
+
   protected initSync(name: string): void {
     try {
       this.syncChannel = new BroadcastChannel(`echo-${name}`);
@@ -289,6 +301,62 @@ export class Echo<T extends Record<string, any>> {
       throw new Error("Hook 未初始化");
     }
     return this.hookRef(selector);
+  }
+
+  /**
+   * 切换存储键名（仅限于 IndexedDB 方案使用）
+   * @param name 新的存储键名
+   * @returns 当前实例，用于链式调用
+   */
+  public switch(name: string): this {
+    if (!this.storageAdapter) {
+      throw new Error("Echo Core: 请先设置存储模式");
+    }
+
+    // 仅限于 IndexedDB 方案使用
+    if (!(this.storageAdapter instanceof IndexedDBAdapter)) {
+      throw new Error("Echo Core: switch 方法仅限于 IndexedDB 方案使用");
+    }
+
+    // 获取当前配置
+    const hasSync = !!this.syncChannel;
+
+    // 保存当前数据库和对象仓库名称
+    const database = this.storageAdapter.getDatabaseName();
+    const object = this.storageAdapter.getObjectStoreName();
+
+    // 清理当前资源
+    this.cleanup();
+
+    // 使用新配置重新初始化，保持相同的数据库和对象仓库
+    this.storageAdapter = new IndexedDBAdapter({
+      name: name,
+      database: database,
+      object: object,
+      sync: hasSync,
+    });
+
+    // 使用标准的 hydrate 方法，它会在没有持久化值时使用默认状态
+    const hydratePromise = this.hydrate();
+    this.readyPromise = hydratePromise;
+
+    // 如果之前有同步，重新初始化同步
+    if (hasSync) {
+      this.initSync(name);
+    }
+
+    // 确保在hydrate完成后通知所有监听器，与indexed()方法行为保持一致
+    hydratePromise
+      .then(() => {
+        if (this.isInitialized) {
+          this.listeners.forEach((listener) => listener(this.state));
+        }
+      })
+      .catch((error) => {
+        console.error("Echo Core: 切换存储键名失败", error);
+      });
+
+    return this;
   }
 
   /**

@@ -100,9 +100,9 @@ userStore.localStorage({
 
 ```typescript
 userStore.indexed({
-  name: "user-store", // 存储名称
-  storeName: "userData", // 对象仓库名称
-  version: 1, // 数据库版本
+  name: "user-store", // 存储键名
+  database: "user-database", // 数据库名称
+  object: "userData", // 对象仓库名称，默认是 'echo-state'
   sync: true, // 是否跨窗口同步
 });
 ```
@@ -192,6 +192,65 @@ userStore.cleanup();
 userStore.destroy();
 ```
 
+### 切换存储键名
+
+Echo 提供了 `switch` 方法，允许您在当前数据库和对象仓库下切换到不同的键名。**注意：此方法仅限于 IndexedDB 方案使用。**
+
+```typescript
+// 创建 IndexedDB 存储
+const projectStore = new Echo({ title: "项目1" }).indexed({
+  name: "project-1",
+  database: "projects-db",
+  object: "projects-store",
+});
+
+// 切换到另一个项目的数据（在同一个数据库和对象仓库下）
+projectStore.switch("project-2");
+
+// 等待切换完成后再使用
+projectStore
+  .switch("project-3")
+  .ready()
+  .then(() => {
+    console.log("已切换到项目3的数据");
+    console.log(projectStore.current);
+  });
+```
+
+这个功能在需要管理多个项目数据的应用中特别有用。例如，您可以在同一个数据库中存储多个项目的数据，每个项目使用不同的键名。
+
+当使用 `switch` 方法时，它会保持在同一个数据库和对象仓库下，只切换键名。这意味着您可以在同一个数据库结构中管理多个相关的数据集，而不需要创建多个数据库或对象仓库。
+
+需要注意的是，当切换到一个新的键名时：
+
+- 如果该键名下已经有持久化的数据，Echo 会加载这些数据
+- 如果该键名下没有持久化的数据，Echo 会使用默认状态（构造函数中提供的状态）初始化，而不是使用当前状态
+
+```typescript
+// 示例：管理多个用户的设置
+const settingsStore = new Echo({ theme: "light" }).indexed({
+  name: "user-123", // 当前用户ID
+  database: "app-settings",
+  object: "user-settings",
+});
+
+// 切换到另一个用户的设置
+function switchToUser(userId: string) {
+  settingsStore
+    .switch(userId)
+    .ready()
+    .then(() => {
+      console.log(`已切换到用户 ${userId} 的设置`);
+      // 如果 userId 下没有数据，此时状态为默认值 { theme: "light" }
+    });
+}
+
+// 使用
+switchToUser("user-456");
+```
+
+如果尝试在 LocalStorage 或临时存储模式下使用 `switch` 方法，将会抛出异常。
+
 ## 完整 API 参考
 
 ### Echo 类
@@ -229,6 +288,9 @@ class Echo<T extends Record<string, any>> {
 
   // 资源管理
   destroy(): void;
+
+  // 键名切换（仅限于 IndexedDB 方案使用）
+  switch(name: string): this;
 }
 ```
 
@@ -243,8 +305,8 @@ interface StorageConfig {
 
 // IndexedDB配置
 interface IndexedDBConfig extends StorageConfig {
-  storeName: string; // 对象仓库名称
-  version?: number; // 数据库版本
+  database: string; // 数据库名称
+  object?: string; // 对象仓库名称，默认是 'echo-state'
 }
 
 // 设置选项
@@ -399,6 +461,7 @@ A: 这是因为`indexed()`方法是异步的，它内部调用的`hydrate()`方�
 echo
   .indexed({
     name: projectId,
+    database: "my-database",
   })
   .set(project, {
     replace: true,
@@ -414,6 +477,7 @@ echo
 await echo
   .indexed({
     name: projectId,
+    database: "my-database",
   })
   .ready();
 
@@ -425,6 +489,7 @@ echo.set(project, {
 echo
   .indexed({
     name: projectId,
+    database: "my-database",
   })
   .ready()
   .then(() => {
@@ -435,3 +500,35 @@ echo
 ```
 
 这样可以确保在设置新状态之前，数据库已经完成了初始化。
+
+### Q: IndexedDB 配置参数有什么变化？
+
+A: 在最新版本中，IndexedDB 的配置参数发生了变化：
+
+- `storeName` 改为 `database`，表示数据库名称
+- `version` 参数被移除
+- 新增 `object` 参数，表示对象仓库名称，默认值为 'echo-state'
+
+旧版本配置：
+
+```typescript
+userStore.indexed({
+  name: "user-store",
+  storeName: "userData",
+  version: 1,
+  sync: true,
+});
+```
+
+新版本配置：
+
+```typescript
+userStore.indexed({
+  name: "user-store",
+  database: "user-database",
+  object: "userData", // 可选，默认为 'echo-state'
+  sync: true,
+});
+```
+
+请确保更新您的代码以适应这些变化。
