@@ -1,10 +1,11 @@
 {
 	"name": "echo-state",
-	"version": "1.2.28",
+	"version": "1.2.29",
 	"description": "一个轻量级的状态管理库，支持本地存储和 IndexedDB",
 	"main": "dist/index.js",
 	"module": "dist/index.esm.js",
 	"types": "dist/index.d.ts",
+	"type": "module",
 	"files": [
 		"dist"
 	],
@@ -13,7 +14,10 @@
 		"prepublishOnly": "npm run build",
 		"lint": "eslint . --ext .ts",
 		"format": "prettier --write \"src/**/*.ts\"",
-		"dev": "vite"
+		"dev": "vite",
+		"docs:dev": "vitepress dev docs",
+		"docs:build": "vitepress build docs",
+		"docs:preview": "vitepress preview docs"
 	},
 	"keywords": [
 		"state-management",
