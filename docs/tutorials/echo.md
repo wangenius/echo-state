@@ -390,3 +390,48 @@ async function fetchUserData() {
   }
 }
 ```
+
+### Q: 为什么在链式调用`indexed()`和`set()`方法时，数据库中存储的是默认状态而不是我设置的状态？
+
+A: 这是因为`indexed()`方法是异步的，它内部调用的`hydrate()`方法需要时间来初始化数据库。当你链式调用时：
+
+```typescript
+echo
+  .indexed({
+    name: projectId,
+  })
+  .set(project, {
+    replace: true,
+  });
+```
+
+`set()`方法会在`hydrate()`完成之前执行，此时如果数据库中没有数据，`hydrate()`会使用默认状态初始化数据库，覆盖你设置的状态。
+
+正确的做法是等待初始化完成后再设置状态：
+
+```typescript
+// 方法1：使用await
+await echo
+  .indexed({
+    name: projectId,
+  })
+  .ready();
+
+echo.set(project, {
+  replace: true,
+});
+
+// 方法2：使用链式Promise
+echo
+  .indexed({
+    name: projectId,
+  })
+  .ready()
+  .then(() => {
+    echo.set(project, {
+      replace: true,
+    });
+  });
+```
+
+这样可以确保在设置新状态之前，数据库已经完成了初始化。
