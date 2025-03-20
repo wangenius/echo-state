@@ -200,7 +200,7 @@ export default defineConfig({
 
   themeConfig: {
     socialLinks: [
-      { icon: "github", link: "https://github.com/wangenius/echo" },
+      { icon: "github", link: "https://github.com/wangenius/echo-state" },
     ],
   },
 });
