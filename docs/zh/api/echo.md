@@ -33,6 +33,7 @@ class Echo<T> {
   indexed(config: IndexedDBConfig): this;
   destroy(): void;
   switch(name: string): this;
+  discard(key: string): Promise<void>;
 }
 ```
 
@@ -421,6 +422,36 @@ destroy(): void
 ```typescript
 userStore.destroy();
 ```
+
+##### discard()
+
+```typescript
+discard(key: string): Promise<void>
+```
+
+删除 IndexedDB 中指定的 key。此方法仅在使用 IndexedDB 存储模式时可用。
+
+**参数:**
+
+- `key: string` - 要删除的 key
+
+**返回:**
+
+- `Promise<void>` - 删除操作完成后的 Promise
+
+**示例:**
+
+```typescript
+// 删除指定的 key
+await userStore.discard("some-key");
+```
+
+**注意:**
+
+- 此方法仅在使用 IndexedDB 存储模式时可用
+- 如果未设置存储模式或使用了其他存储模式，将抛出错误
+- 删除操作会同步到其他打开的窗口
+- 删除后会通知所有监听器
 
 ## 类型定义
 

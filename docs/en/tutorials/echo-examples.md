@@ -933,6 +933,112 @@ function ThemeApp() {
 export default ThemeApp;
 ```
 
+## User Data Management with IndexedDB
+
+This example demonstrates how to use Echo with IndexedDB storage mode and the `discard` method to manage user data:
+
+```tsx
+import React from "react";
+import { Echo } from "echo-state";
+
+// Define user data type
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  preferences: {
+    theme: "light" | "dark";
+    notifications: boolean;
+  };
+}
+
+// Create the user data storage with IndexedDB
+const userStore = new Echo<UserData>({
+  id: "",
+  name: "",
+  email: "",
+  preferences: {
+    theme: "light",
+    notifications: true,
+  },
+}).indexed({
+  name: "user-data",
+  database: "app-db",
+  object: "users",
+  sync: true,
+});
+
+// User management component
+function UserManager() {
+  const userData = userStore.use();
+
+  const updateUser = async (userId: string, data: Partial<UserData>) => {
+    // Switch to the specific user's data
+    userStore.switch(userId);
+
+    // Update user data
+    userStore.set(data);
+  };
+
+  const deleteUser = async (userId: string) => {
+    try {
+      // Delete the user's data from IndexedDB
+      await userStore.discard(userId);
+      console.log(`User ${userId} data deleted successfully`);
+    } catch (error) {
+      console.error("Failed to delete user data:", error);
+    }
+  };
+
+  return (
+    <div>
+      <h2>User Data Management</h2>
+      <div>
+        <h3>Current User Data</h3>
+        <pre>{JSON.stringify(userData, null, 2)}</pre>
+
+        <div>
+          <h4>Actions</h4>
+          <button
+            onClick={() =>
+              updateUser("user-123", {
+                name: "John Doe",
+                email: "john@example.com",
+              })
+            }
+          >
+            Update User
+          </button>
+          <button
+            onClick={() => deleteUser("user-123")}
+            style={{ marginLeft: "10px" }}
+          >
+            Delete User
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default UserManager;
+```
+
+This example shows:
+
+1. How to use IndexedDB storage mode for user data
+2. How to switch between different user data using the `switch` method
+3. How to delete user data using the `discard` method
+4. Error handling for IndexedDB operations
+5. Cross-window synchronization of user data
+
+The `discard` method is particularly useful when you need to:
+
+- Delete specific user data without affecting other users
+- Clean up old or unused data
+- Implement user account deletion functionality
+- Manage multiple independent data sets in the same database
+
 ## Summary
 
 These examples demonstrate the application of the Echo state management library in different scenarios:
@@ -942,5 +1048,6 @@ These examples demonstrate the application of the Echo state management library 
 3. **User Authentication Application** - Authentication state management and cross-window synchronization
 4. **Multi-Project Management Application** - Using the `switch` method to switch between multiple data sets
 5. **Theme Switching Application** - Theme state management and application to UI
+6. **User Data Management with IndexedDB** - Using Echo with IndexedDB storage mode and the `discard` method to manage user data
 
 These examples can be used as a starting point for developing your own applications, and modified and extended as needed.

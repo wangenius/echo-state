@@ -33,6 +33,7 @@ class Echo<T> {
   indexed(config: IndexedDBConfig): this;
   destroy(): void;
   switch(name: string): this;
+  discard(key: string): Promise<void>;
 }
 ```
 
@@ -373,6 +374,36 @@ Switches to a different named storage key, allowing multiple distinct states to 
 // Switch to a different user's data
 userStore.switch("user-123");
 ```
+
+##### discard
+
+```typescript
+discard(key: string): Promise<void>
+```
+
+Deletes a specific key from IndexedDB. This method is only available when using IndexedDB storage mode.
+
+**Parameters:**
+
+- `key: string` - The key to delete
+
+**Returns:**
+
+- `Promise<void>` - A Promise that resolves when the deletion is complete
+
+**Example:**
+
+```typescript
+// Delete a specific key
+await userStore.discard("some-key");
+```
+
+**Note:**
+
+- This method is only available when using IndexedDB storage mode
+- Throws an error if no storage mode is set or if using a different storage mode
+- The deletion operation is synchronized across all open windows
+- All listeners are notified after the deletion
 
 ## Types
 

@@ -251,6 +251,38 @@ export class Echo<T extends Record<string, any> | null | string | number> {
     this.listeners.forEach((listener) => listener(this.state));
   }
 
+  /**
+   * 删除 IndexedDB 中指定的 key
+   * @param key 要删除的 key
+   */
+  public async discard(key: string): Promise<void> {
+    if (!this.storageAdapter) {
+      throw new Error("Echo Core: 请先设置存储模式");
+    }
+
+    if (!(this.storageAdapter instanceof IndexedDBAdapter)) {
+      throw new Error("Echo Core: discard 方法仅限于 IndexedDB 方案使用");
+    }
+
+    try {
+      await this.storageAdapter.discard(key);
+
+      // 通知其他窗口
+      if (this.syncChannel && !this.isHydrating) {
+        this.syncChannel.postMessage({
+          type: "state-delete",
+          key: key,
+        });
+      }
+
+      // 通知所有监听器
+      this.listeners.forEach((listener) => listener(this.state));
+    } catch (error) {
+      console.error("Echo Core: 删除 key 失败", error);
+      throw error;
+    }
+  }
+
   public async ready(): Promise<void> {
     return this.readyPromise;
   }
@@ -487,100 +519,6 @@ export class Echo<T extends Record<string, any> | null | string | number> {
     this.storageAdapter?.destroy();
   }
 }
-
-/**
- * 使用示例：
- *
- * ```typescript
- * // 1. 对象类型状态示例
- * interface UserState {
- *   name: string;
- *   age: number;
- *   preferences: {
- *     theme: string;
- *     notifications: boolean;
- *   };
- * }
- *
- * // 创建一个管理用户状态的Echo实例
- * const userStore = new Echo<UserState>({
- *   name: "未登录用户",
- *   age: 0,
- *   preferences: {
- *     theme: "light",
- *     notifications: true,
- *   },
- * });
- *
- * // 使用LocalStorage存储模式
- * userStore.localStorage({
- *   name: "user-store",
- *   sync: true, // 启用跨窗口同步
- * });
- *
- * // 更新状态
- * userStore.set({
- *   name: "张三",
- *   age: 30,
- * });
- *
- * // 函数式更新
- * userStore.set((state) => ({
- *   preferences: {
- *     ...state.preferences,
- *     theme: "dark",
- *   },
- * }));
- *
- * // 获取当前状态
- * const currentUser = userStore.current;
- *
- * // 在React组件中使用
- * function UserProfile() {
- *   // 使用整个状态
- *   const user = userStore.use();
- *
- *   // 使用选择器只获取部分状态
- *   const theme = userStore.use(state => state.preferences.theme);
- *
- *   return (
- *     <div>
- *       <h1>{user.name}</h1>
- *       <p>年龄: {user.age}</p>
- *       <p>主题: {theme}</p>
- *     </div>
- *   );
- * }
- *
- * // 2. 简单类型状态示例
- * const counterStore = new Echo<number>(0);
- *
- * // 使用IndexedDB存储模式
- * counterStore.indexed({
- *   name: "counter",
- *   database: "app-db",
- *   object: "counters",
- * });
- *
- * // 更新状态
- * counterStore.set(5);
- *
- * // 函数式更新
- * counterStore.set((count) => count + 1);
- *
- * // 在React组件中使用
- * function Counter() {
- *   const count = counterStore.use();
- *
- *   return (
- *     <div>
- *       <p>计数: {count}</p>
- *       <button onClick={() => counterStore.set(count + 1)}>增加</button>
- *     </div>
- *   );
- * }
- * ```
- */
 
 // 导出类型
 export type { StorageConfig, IndexedDBConfig, StateUpdater, SetOptions };
