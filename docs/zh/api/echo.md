@@ -426,14 +426,10 @@ userStore.destroy();
 ##### discard()
 
 ```typescript
-discard(key: string): Promise<void>
+discard(): Promise<void>
 ```
 
-删除 IndexedDB 中指定的 key。此方法仅在使用 IndexedDB 存储模式时可用。
-
-**参数:**
-
-- `key: string` - 要删除的 key
+删除 IndexedDB 中指定的 key。此方法仅在使用 IndexedDB 存储模式时可用。自动调用了 temporary()方法。
 
 **返回:**
 
@@ -443,7 +439,7 @@ discard(key: string): Promise<void>
 
 ```typescript
 // 删除指定的 key
-await userStore.discard("some-key");
+await userStore.discard();
 ```
 
 **注意:**

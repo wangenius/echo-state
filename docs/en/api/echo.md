@@ -378,14 +378,10 @@ userStore.switch("user-123");
 ##### discard
 
 ```typescript
-discard(key: string): Promise<void>
+discard(): Promise<void>
 ```
 
-Deletes a specific key from IndexedDB. This method is only available when using IndexedDB storage mode.
-
-**Parameters:**
-
-- `key: string` - The key to delete
+Deletes a specific key from IndexedDB. This method is only available when using IndexedDB storage mode. Automatically calls the temporary() method.
 
 **Returns:**
 
@@ -395,7 +391,7 @@ Deletes a specific key from IndexedDB. This method is only available when using 
 
 ```typescript
 // Delete a specific key
-await userStore.discard("some-key");
+await userStore.discard();
 ```
 
 **Note:**

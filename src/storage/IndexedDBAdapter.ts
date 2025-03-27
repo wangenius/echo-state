@@ -91,7 +91,7 @@ export class IndexedDBAdapter<T = any> implements StorageAdapter<T> {
    * 删除指定的 key
    * @param key 要删除的 key
    */
-  async discard(key: string): Promise<void> {
+  async discard(): Promise<void> {
     await this.init();
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(
@@ -99,7 +99,7 @@ export class IndexedDBAdapter<T = any> implements StorageAdapter<T> {
         "readwrite"
       );
       const store = transaction.objectStore(this.objectStoreName);
-      const request = store.delete(key);
+      const request = store.delete(this.name);
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });

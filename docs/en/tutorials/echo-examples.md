@@ -980,16 +980,6 @@ function UserManager() {
     userStore.set(data);
   };
 
-  const deleteUser = async (userId: string) => {
-    try {
-      // Delete the user's data from IndexedDB
-      await userStore.discard(userId);
-      console.log(`User ${userId} data deleted successfully`);
-    } catch (error) {
-      console.error("Failed to delete user data:", error);
-    }
-  };
-
   return (
     <div>
       <h2>User Data Management</h2>
@@ -1010,7 +1000,7 @@ function UserManager() {
             Update User
           </button>
           <button
-            onClick={() => deleteUser("user-123")}
+            onClick={() => userStore.discard()}
             style={{ marginLeft: "10px" }}
           >
             Delete User

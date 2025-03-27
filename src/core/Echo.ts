@@ -265,7 +265,8 @@ export class Echo<T extends Record<string, any> | null | string | number> {
     }
 
     try {
-      await this.storageAdapter.discard(key);
+      await this.storageAdapter.discard();
+      this.temporary();
 
       // 通知其他窗口
       if (this.syncChannel && !this.isHydrating) {
