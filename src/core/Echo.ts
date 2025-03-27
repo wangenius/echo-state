@@ -255,7 +255,7 @@ export class Echo<T extends Record<string, any> | null | string | number> {
    * 删除 IndexedDB 中指定的 key
    * @param key 要删除的 key
    */
-  public async discard(key: string): Promise<void> {
+  public async discard(): Promise<void> {
     if (!this.storageAdapter) {
       throw new Error("Echo Core: 请先设置存储模式");
     }
@@ -267,14 +267,6 @@ export class Echo<T extends Record<string, any> | null | string | number> {
     try {
       await this.storageAdapter.discard();
       this.temporary();
-
-      // 通知其他窗口
-      if (this.syncChannel && !this.isHydrating) {
-        this.syncChannel.postMessage({
-          type: "state-delete",
-          key: key,
-        });
-      }
 
       // 通知所有监听器
       this.listeners.forEach((listener) => listener(this.state));
