@@ -16,7 +16,13 @@ export class LocalStorageAdapter<T = any> implements StorageAdapter<T> {
 
   async getItem(): Promise<T | null> {
     const value = localStorage.getItem(this.name);
-    return value ? JSON.parse(value) : null;
+    if (value === null) return null;
+    if (value === "undefined") return undefined as T;
+    try {
+      return JSON.parse(value);
+    } catch (error) {
+      return value as T;
+    }
   }
 
   async setItem(value: T): Promise<void> {

@@ -92,6 +92,8 @@ export class Echo<T extends Record<string, any> | null | string | number> {
       this.isInitialized = true;
     } catch (error) {
       console.error("Echo Core: 状态恢复失败", error);
+      this.set(this.defaultState, { replace: true });
+      this.isInitialized = true;
     }
   }
 
@@ -252,8 +254,7 @@ export class Echo<T extends Record<string, any> | null | string | number> {
   }
 
   /**
-   * 删除 IndexedDB 中指定的 key
-   * @param key 要删除的 key
+   * 删除 IndexedDB 当前store。
    */
   public async discard(): Promise<void> {
     if (!this.storageAdapter) {
