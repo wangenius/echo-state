@@ -48,8 +48,18 @@ userStore.getCurrent().then((state) => {
   console.log(state.name);
 });
 
-// Wait for initialization to complete
+// Wait for initialization to complete and optionally set state
 userStore.ready().then(() => {
+  console.log(userStore.current);
+});
+
+// Wait for initialization and set state in one call
+userStore.ready({ name: "John" }).then(() => {
+  console.log(userStore.current);
+});
+
+// Use function to update state during initialization
+userStore.ready((state) => ({ ...state, age: 25 })).then(() => {
   console.log(userStore.current);
 });
 ```

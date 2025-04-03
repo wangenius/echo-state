@@ -9,11 +9,11 @@ Echo 是一个轻量级的状态管理库，专为 React 应用设计，支持�
 
 ## 特性
 
-- 支持多种存储模式（临时、LocalStorage、IndexedDB）
-- 支持跨窗口状态同步
+- 支持多种存储模式（临时存储、LocalStorage、IndexedDB）
+- 跨窗口状态同步
 - 内置 React Hooks 集成
-- 支持状态订阅
-- 支持选择器
+- 状态订阅支持
+- 选择器支持
 
 ## 安装
 
@@ -21,14 +21,14 @@ Echo 是一个轻量级的状态管理库，专为 React 应用设计，支持�
 npm install echo-state
 ```
 
-## 基础用法
+## 基本用法
 
 ### 创建状态
 
 ```typescript
 import { Echo } from "echo-state";
 
-// 创建一个Echo实例
+// 创建 Echo 实例
 const userStore = new Echo({
   name: "",
   age: 0,
@@ -48,8 +48,18 @@ userStore.getCurrent().then((state) => {
   console.log(state.name);
 });
 
-// 等待初始化完成
+// 等待初始化完成并可选择设置状态
 userStore.ready().then(() => {
+  console.log(userStore.current);
+});
+
+// 等待初始化并设置状态（一步完成）
+userStore.ready({ name: "张三" }).then(() => {
+  console.log(userStore.current);
+});
+
+// 在初始化时使用函数更新状态
+userStore.ready((state) => ({ ...state, age: 25 })).then(() => {
   console.log(userStore.current);
 });
 ```
@@ -88,7 +98,7 @@ Echo 支持三种存储模式：临时存储、LocalStorage 和 IndexedDB。
 ### 临时存储（默认）
 
 ```typescript
-// 默认为临时存储，或者显式指定
+// 默认是临时存储，或显式指定
 userStore.temporary();
 ```
 
@@ -107,7 +117,7 @@ userStore.localStorage({
 userStore.indexed({
   name: "user-store", // 存储键名
   database: "user-database", // 数据库名称
-  object: "userData", // 对象仓库名称，默认是 'echo-state'
+  object: "userData", // 对象仓库名称，默认为 'echo-state'
   sync: true, // 是否跨窗口同步
 });
 ```
@@ -125,7 +135,7 @@ import { Echo } from "echo-state";
 const counterStore = new Echo({ count: 0 });
 
 function Counter() {
-  // 使用Echo的use hook获取状态
+  // 使用 Echo 的 use hook 获取状态
   const state = counterStore.use();
 
   return (
@@ -143,7 +153,7 @@ function Counter() {
 
 ```tsx
 function CounterDisplay() {
-  // 只订阅count属性的变化
+  // 只订阅 count 属性的变化
   const count = counterStore.use((state) => state.count);
 
   return <p>当前计数: {count}</p>;
@@ -152,7 +162,7 @@ function CounterDisplay() {
 
 ## 状态订阅
 
-您可以直接订阅状态变化，而不使用 React Hook。
+你可以不使用 React Hook 直接订阅状态变化。
 
 ```typescript
 // 添加监听器
@@ -163,7 +173,7 @@ const unsubscribe = userStore.subscribe((state) => {
 // 移除监听器
 unsubscribe();
 
-// 或者使用显式的添加/移除方法
+// 或使用显式的添加/移除方法
 const listener = (state) => console.log("状态已更新:", state);
 userStore.addListener(listener);
 userStore.removeListener(listener);
@@ -173,7 +183,7 @@ userStore.removeListener(listener);
 
 - [高级用法](./echo-advanced.md) - 了解更多高级功能，如资源清理、切换存储键名等
 - [API 参考](../api/echo.md) - 完整的 API 参考文档
-- [最佳实践](./echo-best-practices.md) - Echo 使用的最佳实践和模式
+- [最佳实践](./echo-best-practices.md) - 使用 Echo 的最佳实践和模式
 - [示例项目](./echo-examples.md) - 完整的示例项目和用例
 - [常见问题](./echo-faq.md) - 常见问题解答
 - [支持的数据类型](./echo-data-types.md) - Echo 支持的数据类型和存储限制
