@@ -87,7 +87,10 @@ export class Echo<T extends Record<string, any> | null | string | number> {
         } else {
           this.state = this.defaultState;
         }
-        await this.storageAdapter.setItem(this.state);
+        // 只有当状态不为 null 时才存储
+        if (this.state !== null) {
+          await this.storageAdapter.setItem(this.state);
+        }
       }
       this.isInitialized = true;
     } catch (error) {
@@ -183,9 +186,17 @@ export class Echo<T extends Record<string, any> | null | string | number> {
     this.state = finalState;
 
     if (!this.isHydrating && this.storageAdapter) {
-      this.storageAdapter.setItem(this.state).catch((error) => {
-        console.error("Echo Core: 状态保存失败", error);
-      });
+      // 只有当状态不为 null 时才存储
+      if (this.state !== null) {
+        this.storageAdapter.setItem(this.state).catch((error) => {
+          console.error("Echo Core: 状态保存失败", error);
+        });
+      } else {
+        // 如果状态为 null，则删除存储
+        this.storageAdapter.removeItem().catch((error) => {
+          console.error("Echo Core: 状态删除失败", error);
+        });
+      }
     }
 
     if (this.syncChannel && !options.isFromSync && !this.isHydrating) {
