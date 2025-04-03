@@ -277,9 +277,21 @@ export class Echo<T extends Record<string, any> | null | string | number> {
     }
   }
 
-  public async ready(): Promise<void> {
+  /**
+   * 等待实例初始化完成，并设置状态
+   * @param nextState 可选的下一个状态
+   * @param options 可选的设置选项
+   * @returns 初始化完成的Promise
+   */
+  public async ready(nextState?: Partial<T> | StateUpdater<T>, options: SetOptions = {}): Promise<void> {
+    if (nextState) {
+      await this.readyPromise;
+      this.set(nextState, options);
+    }
     return this.readyPromise;
   }
+
+
 
   public async getCurrent(): Promise<T> {
     await this.ready();

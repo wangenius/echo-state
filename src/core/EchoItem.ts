@@ -1,10 +1,26 @@
 import { Echo } from "./Echo";
-import { IndexedDBConfig } from "./types";
+
+export abstract class EchoList<T extends Record<string, any> & { id: string }> {
+  protected store: Echo<Record<string, T>> = new Echo<Record<string, T>>(
+    {},
+  ).localStorage({
+    name: this.name,
+  });
+
+  constructor(private name: string) {}
+
+  public use = this.store.use.bind(this.store);
+  public set = this.store.set.bind(this.store);
+  public delete = this.store.delete.bind(this.store);
+  public current() {
+    return this.store.current;
+  }
+}
 
 /**
  * EchoItem 基类
  * 一个基于 Echo 的状态管理基类，专注于单个数据项的管理
- * 
+ *
  * 特性：
  * - 基于 Echo 的状态管理
  * - 支持单个数据项的 CRUD 操作
@@ -13,23 +29,19 @@ import { IndexedDBConfig } from "./types";
  */
 export abstract class EchoItem<T extends Record<string, any> & { id: string }> {
   /** Echo 状态管理实例 */
-  private store: Echo<T | null> = new Echo<T | null>(null);
+  protected store: Echo<T | null> = new Echo<T | null>(null);
 
   /** 使用 React Hook 获取状态 */
   public use = this.store.use.bind(this.store);
-  
+
   /** 更新状态 */
   public set = this.store.set.bind(this.store);
 
   /**
    * 构造函数
    * @param database 数据库名称
-   * @param objectStore 对象存储名称
    */
-  constructor(
-    private database: string,
-    private objectStore: string = "items"
-  ) {}
+  constructor(private database: string) {}
 
   /**
    * 获取当前状态
@@ -44,24 +56,23 @@ export abstract class EchoItem<T extends Record<string, any> & { id: string }> {
    * @param item 数据项
    * @throws Error 如果数据项没有 id 字段
    */
-  public async create(item: T): Promise<void> {
+  public async create(item: T): Promise<EchoItem<T>> {
     if (!item.id) {
-      throw new Error("数据项必须包含 id 字段");
+      throw new Error("Data item must contain an id field");
     }
 
-    const config: IndexedDBConfig = {
+    const config = {
       database: this.database,
       name: item.id,
-      object: this.objectStore,
-      sync: true
     };
 
     try {
-      this.store.indexed(config);
-      await this.store.set(item);
+      await this.store.indexed(config).ready();
+      this.store.set(item);
+      return this;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      throw new Error(`创建数据项失败: ${errorMessage}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`Failed to create data item: ${errorMessage}`);
     }
   }
 
@@ -70,36 +81,18 @@ export abstract class EchoItem<T extends Record<string, any> & { id: string }> {
    * @param id 数据项 ID
    * @throws Error 如果切换失败
    */
-  public async switch(id: string): Promise<void> {
+  public async switch(id: string): Promise<EchoItem<T>> {
     if (!id) {
       throw new Error("ID 不能为空");
     }
 
     try {
       this.store.switch(id);
-      // 确保状态已加载
       await this.store.ready();
+      return this;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      throw new Error(`切换数据项失败: ${errorMessage}`);
-    }
-  }
-
-  /**
-   * 更新数据项
-   * @param item 更新后的数据项
-   * @throws Error 如果更新失败
-   */
-  public async update(item: T): Promise<void> {
-    if (!item.id) {
-      throw new Error("数据项必须包含 id 字段");
-    }
-
-    try {
-      await this.store.set(item);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      throw new Error(`更新数据项失败: ${errorMessage}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`Failed to switch data item: ${errorMessage}`);
     }
   }
 
@@ -111,8 +104,8 @@ export abstract class EchoItem<T extends Record<string, any> & { id: string }> {
     try {
       await this.store.discard();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
-      throw new Error(`删除数据项失败: ${errorMessage}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`Failed to delete data item: ${errorMessage}`);
     }
   }
-} 
+}
