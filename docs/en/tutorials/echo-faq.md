@@ -22,15 +22,20 @@ A: Echo has the following advantages compared to Redux:
 
 ### Q: What data types does Echo support?
 
-A: Echo supports multiple data types, but the support depends on the selected storage mode:
+A: Echo supports various data types, but the level of support depends on the selected storage mode:
 
-- **Basic data types**：Object(Record)、Array、String、Number、Boolean、null
-- **Complex data types**：
-  - Map and Set: Can be used in memory, but do not support persistence
-  - Class instances: Can be used in memory, but will lose methods and prototype chains when persisted
+- **Basic data types**: Objects (Record), arrays, strings, numbers, booleans, null
+- **Complex data types**:
+  - Map and Set: Can be used in memory but do not support persistence
+  - Class instances: Can be used in memory but lose methods and prototype chain when persisted
   - Functions: Not supported for storage
 
-For more information, please refer to the [Echo Data Types](./echo-data-types.md) document.
+Note that when the state is `null`:
+- When using persistent storage (LocalStorage or IndexedDB), `null` state will not be stored
+- When the state becomes `null`, stored data will be deleted
+- When the state changes from `null` to other values, storage will resume
+
+For more details, please refer to the [Echo Data Types](./echo-data-types.md) documentation.
 
 ### Q: Does Echo support TypeScript?
 

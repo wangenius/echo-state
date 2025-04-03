@@ -70,6 +70,11 @@ const nullableStore = new Echo<null>(null);
 nullableStore.set(null);
 ```
 
+需要注意的是，当状态为 `null` 时：
+- 在使用持久化存储（LocalStorage 或 IndexedDB）时，`null` 状态不会被存储
+- 当状态变为 `null` 时，会删除已存储的数据
+- 当状态从 `null` 变为其他值时，会重新开始存储
+
 ### 数组类型 (Array)
 
 ```typescript

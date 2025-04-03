@@ -70,6 +70,11 @@ const nullableStore = new Echo<null>(null);
 nullableStore.set(null);
 ```
 
+Note that when the state is `null`:
+- When using persistent storage (LocalStorage or IndexedDB), `null` state will not be stored
+- When the state becomes `null`, stored data will be deleted
+- When the state changes from `null` to other values, storage will resume
+
 ### Array Type (Array)
 
 ```typescript
