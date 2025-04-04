@@ -71,6 +71,14 @@ export class EchoManager {
         const getDataFromIndexedDB = async () => {
           try {
             const request = indexedDB.open(database, 1);
+            
+            request.onupgradeneeded = (event) => {
+              const db = (event.target as IDBOpenDBRequest).result;
+              if (!db.objectStoreNames.contains(objectStore)) {
+                db.createObjectStore(objectStore);
+              }
+            };
+
             request.onerror = () => {
               console.error('Failed to open IndexedDB:', request.error);
               if (isMounted) {
@@ -78,11 +86,9 @@ export class EchoManager {
                 forceUpdate({});
               }
             };
+
             request.onsuccess = async () => {
               const db = request.result;
-              if (!db.objectStoreNames.contains(objectStore)) {
-                db.createObjectStore(objectStore);
-              }
               const transaction = db.transaction(objectStore, "readonly");
               const store = transaction.objectStore(objectStore);
               const getAllRequest = store.getAll();
