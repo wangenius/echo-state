@@ -60,11 +60,11 @@ export class Echo<T extends Record<string, any> | null | string | number> {
    * @returns 配置好的 Echo 实例
    */
   public static get<T extends Record<string, any> | null | string | number>(
-    config: { database: string; objectstore: string; name: string }
+    config: { database: string; objectstore?: string; name: string }
   ): Echo<T> {
     return new Echo<T>(null as T).indexed({
       database: config.database,
-      object: config.objectstore,
+      object: config.objectstore || "echo-state",
       name: config.name,
       sync: true
     });
