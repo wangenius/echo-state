@@ -4,12 +4,14 @@ import { AsyncDataTest } from "./asyncDataTest";
 import { IndexedEchoTest } from "./indexedEchoTest";
 import { PrimitiveEchoTest } from "./PrimitiveEchoTest";
 import { EchoStoreTest } from "./EchoStoreTest";
+import { Echo } from "../src/core/Echo";
 
+const echo = new Echo<"counter" | "asyncData" | "indexedEcho" | "primitiveEcho" | "echoStore">("counter").localStorage({
+  name: "tab",
+});
 // 主应用组件
 export function App() {
-  const [activeTab, setActiveTab] = useState<
-    "counter" | "asyncData" | "indexedEcho" | "primitiveEcho" | "echoStore"
-  >("indexedEcho");
+  const tab = echo.use();
 
   return (
     <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "2rem" }}>
@@ -35,16 +37,16 @@ export function App() {
         }}
       >
         <button
-          onClick={() => setActiveTab("counter")}
+          onClick={() => echo.set("counter")}
           style={{
             padding: "0.75rem 1.5rem",
             background: "transparent",
             border: "none",
             borderBottom: `2px solid ${
-              activeTab === "counter" ? "#2563eb" : "transparent"
+              tab === "counter" ? "#2563eb" : "transparent"
             }`,
-            color: activeTab === "counter" ? "#2563eb" : "#64748b",
-            fontWeight: activeTab === "counter" ? "bold" : "normal",
+            color: tab === "counter" ? "#2563eb" : "#64748b",
+            fontWeight: tab === "counter" ? "bold" : "normal",
             cursor: "pointer",
             transition: "all 0.2s",
           }}
@@ -52,16 +54,16 @@ export function App() {
           计数器示例
         </button>
         <button
-          onClick={() => setActiveTab("asyncData")}
+          onClick={() => echo.set("asyncData")}
           style={{
             padding: "0.75rem 1.5rem",
             background: "transparent",
             border: "none",
             borderBottom: `2px solid ${
-              activeTab === "asyncData" ? "#2563eb" : "transparent"
+              tab === "asyncData" ? "#2563eb" : "transparent"
             }`,
-            color: activeTab === "asyncData" ? "#2563eb" : "#64748b",
-            fontWeight: activeTab === "asyncData" ? "bold" : "normal",
+            color: tab === "asyncData" ? "#2563eb" : "#64748b",
+            fontWeight: tab === "asyncData" ? "bold" : "normal",
             cursor: "pointer",
             transition: "all 0.2s",
           }}
@@ -69,16 +71,16 @@ export function App() {
           异步数据测试
         </button>
         <button
-          onClick={() => setActiveTab("indexedEcho")}
+          onClick={() => echo.set("indexedEcho")}
           style={{
             padding: "0.75rem 1.5rem",
             background: "transparent",
             border: "none",
             borderBottom: `2px solid ${
-              activeTab === "indexedEcho" ? "#2563eb" : "transparent"
+              tab === "indexedEcho" ? "#2563eb" : "transparent"
             }`,
-            color: activeTab === "indexedEcho" ? "#2563eb" : "#64748b",
-            fontWeight: activeTab === "indexedEcho" ? "bold" : "normal",
+            color: tab === "indexedEcho" ? "#2563eb" : "#64748b",
+            fontWeight: tab === "indexedEcho" ? "bold" : "normal",
             cursor: "pointer",
             transition: "all 0.2s",
           }}
@@ -86,16 +88,16 @@ export function App() {
           IndexedEcho测试
         </button>
         <button
-          onClick={() => setActiveTab("primitiveEcho")}
+          onClick={() => echo.set("primitiveEcho")}
           style={{
             padding: "0.75rem 1.5rem",
             background: "transparent",
             border: "none",
             borderBottom: `2px solid ${
-              activeTab === "primitiveEcho" ? "#2563eb" : "transparent"
+              tab === "primitiveEcho" ? "#2563eb" : "transparent"
             }`,
-            color: activeTab === "primitiveEcho" ? "#2563eb" : "#64748b",
-            fontWeight: activeTab === "primitiveEcho" ? "bold" : "normal",
+            color: tab === "primitiveEcho" ? "#2563eb" : "#64748b",
+            fontWeight: tab === "primitiveEcho" ? "bold" : "normal",
             cursor: "pointer",
             transition: "all 0.2s",
           }}
@@ -103,16 +105,16 @@ export function App() {
           原始类型测试
         </button>
         <button
-          onClick={() => setActiveTab("echoStore")}
+          onClick={() => echo.set("echoStore")}
           style={{
             padding: "0.75rem 1.5rem",
             background: "transparent",
             border: "none",
             borderBottom: `2px solid ${
-              activeTab === "echoStore" ? "#2563eb" : "transparent"
+              tab === "echoStore" ? "#2563eb" : "transparent"
             }`,
-            color: activeTab === "echoStore" ? "#2563eb" : "#64748b",
-            fontWeight: activeTab === "echoStore" ? "bold" : "normal",
+            color: tab === "echoStore" ? "#2563eb" : "#64748b",
+            fontWeight: tab === "echoStore" ? "bold" : "normal",
             cursor: "pointer",
             transition: "all 0.2s",
           }}
@@ -123,13 +125,13 @@ export function App() {
 
       {/* 内容区域 */}
       <div>
-        {activeTab === "counter" ? (
+        {tab === "counter" ? (
           <Counter />
-        ) : activeTab === "asyncData" ? (
+        ) : tab === "asyncData" ? (
           <AsyncDataTest />
-        ) : activeTab === "primitiveEcho" ? (
+        ) : tab === "primitiveEcho" ? (
           <PrimitiveEchoTest />
-        ) : activeTab === "echoStore" ? (
+        ) : tab === "echoStore" ? (
           <EchoStoreTest />
         ) : (
           <IndexedEchoTest />

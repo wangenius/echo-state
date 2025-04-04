@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { EchoStore } from "../src/core/EchoStore";
+import { EchoManager } from "../src/core/EchoManager";
+import { Echo } from "../src/core/Echo";
 
 interface TodoItem {
   id: string;
@@ -7,12 +8,19 @@ interface TodoItem {
   completed: boolean;
 }
 
-const store = new EchoStore<TodoItem>("todo-database", "todos");
+// 创建 Echo 实例并配置为 IndexedDB 模式
+const echo = new Echo<TodoItem | null>(null).indexed({
+  name: "todos",
+  database: "todo-database",
+});
 
 export function EchoStoreTest() {
   const [newTodo, setNewTodo] = useState("");
-  const todos = store.use();
-  const completedCount = store.use((data) => data.filter((todo) => todo.completed).length);
+  // 使用 Echo 实例获取当前编辑的待办事项
+  const currentTodo = echo.use();
+  // 使用 EchoManager 获取所有待办事项
+  const todos = EchoManager.use<TodoItem>("todo-database");
+  const completedCount = todos.filter((todo) => todo.completed).length;
 
   const addTodo = async () => {
     if (!newTodo.trim()) return;
@@ -21,24 +29,34 @@ export function EchoStoreTest() {
       text: newTodo,
       completed: false,
     };
-    await store.set(todo.id, todo);
+    // 使用 Echo 存储新的待办事项，使用 todo.id 作为 name
+    
+     echo.switch(todo.id).set(todo);
     setNewTodo("");
   };
 
   const toggleTodo = async (todo: TodoItem) => {
-    await store.set(todo.id, {
-      ...todo,
-      completed: !todo.completed,
-    });
+    // 直接使用 ready 方法更新状态
+    echo.ready({ ...todo, completed: !todo.completed }, { replace: true });
   };
 
   const deleteTodo = async (id: string) => {
-    await store.delete(id);
+    // 使用 Echo 删除待办事项，使用 id 作为 name
+  const echoItem = new Echo<TodoItem | null>(null).indexed({
+    name: id,
+    database: "todo-database",
+  });
+  echoItem.discard();
+  };
+
+  const selectTodo = async (todo: TodoItem) => {
+    // 使用 Echo 切换到选中的待办事项，使用 todo.id 作为 name
+     echo.switch(todo.id);
   };
 
   return (
     <div style={{ maxWidth: "600px", margin: "0 auto" }}>
-      <h2 style={{ color: "#1e40af", marginBottom: "1.5rem" }}>EchoStore 待办事项示例</h2>
+      <h2 style={{ color: "#1e40af", marginBottom: "1.5rem" }}>Echo + EchoManager 待办事项示例</h2>
       
       {/* 添加待办事项 */}
       <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
@@ -87,16 +105,19 @@ export function EchoStoreTest() {
               alignItems: "center",
               gap: "0.5rem",
               padding: "0.75rem",
-              backgroundColor: "white",
+              backgroundColor: currentTodo?.id === todo.id ? "#f0f9ff" : "white",
               border: "1px solid #e2e8f0",
               borderRadius: "0.375rem",
+              cursor: "pointer",
             }}
+            onClick={() => selectTodo(todo)}
           >
             <input
               type="checkbox"
               checked={todo.completed}
               onChange={() => toggleTodo(todo)}
               style={{ width: "1.25rem", height: "1.25rem" }}
+              onClick={(e) => e.stopPropagation()}
             />
             <span
               style={{
@@ -108,7 +129,10 @@ export function EchoStoreTest() {
               {todo.text}
             </span>
             <button
-              onClick={() => deleteTodo(todo.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteTodo(todo.id);
+              }}
               style={{
                 padding: "0.25rem 0.5rem",
                 backgroundColor: "#ef4444",
@@ -124,6 +148,16 @@ export function EchoStoreTest() {
           </div>
         ))}
       </div>
+
+      {/* 显示当前编辑项 */}
+      {currentTodo && (
+        <div key={currentTodo.id} style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "#f0f9ff", borderRadius: "0.375rem" }}>
+          <h3 style={{ color: "#1e40af", marginBottom: "0.5rem" }}>当前编辑项</h3>
+          <p>ID: {currentTodo.id}</p>
+          <p>内容: <input type="text" defaultValue={currentTodo.text} onChange={(e) => echo.set({ text: e.target.value })} /></p>
+          <p>状态: <input type="checkbox" defaultChecked={currentTodo.completed} onChange={(e) => echo.set({ completed: e.target.checked })} /></p>
+        </div>
+      )}
     </div>
   );
 } 
