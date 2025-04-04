@@ -8,7 +8,7 @@ EchoStore 是一个专门用于管理 IndexedDB 存储的简单接口，提供�
 import { EchoStore } from "echo-core";
 
 // 创建实例
-const store = new EchoStore<YourDataType>("your-database-name", "your-store-name");
+const store = new EchoStore<YourDataType>("your-database-name", "your-store-name", 1);
 
 // 在 React 组件中使用
 function YourComponent() {
@@ -25,11 +25,12 @@ function YourComponent() {
 ### 构造函数
 
 ```typescript
-constructor(database: string, objectStore?: string)
+constructor(database: string, objectStore?: string, version?: number)
 ```
 
 - `database`: 数据库名称
 - `objectStore`: 对象存储名称，默认为 "echo-state"
+- `version`: 数据库版本号，默认为 1
 
 ### 核心方法
 

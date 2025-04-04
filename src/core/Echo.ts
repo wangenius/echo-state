@@ -316,7 +316,7 @@ export class Echo<T extends Record<string, any> | null | string | number> {
       !this.isInitialized
     ) {
       throw new Error(
-        "Echo Core: 请使用 getCurrent() 方法或等待 ready() Promise 完成"
+        "Echo Core: please use getCurrent() method or wait for ready() Promise to complete"
       );
     }
     return this.state;

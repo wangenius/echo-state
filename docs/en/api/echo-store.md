@@ -8,7 +8,7 @@ EchoStore is a simple interface specifically designed for managing IndexedDB sto
 import { EchoStore } from "echo-core";
 
 // Create instance
-const store = new EchoStore<YourDataType>("your-database-name", "your-store-name");
+const store = new EchoStore<YourDataType>("your-database-name", "your-store-name", 1);
 
 // Use in React components
 function YourComponent() {
@@ -25,11 +25,12 @@ function YourComponent() {
 ### Constructor
 
 ```typescript
-constructor(database: string, objectStore?: string)
+constructor(database: string, objectStore?: string, version?: number)
 ```
 
 - `database`: Database name
 - `objectStore`: Object store name, defaults to "echo-state"
+- `version`: Database version number, defaults to 1
 
 ### Core Methods
 

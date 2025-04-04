@@ -1,4 +1,3 @@
-import { IndexedDBAdapter } from "../storage/IndexedDBAdapter";
 import { useEffect, useState } from "react";
 
 /**
@@ -6,19 +5,48 @@ import { useEffect, useState } from "react";
  * 用于管理 IndexedDB 存储的简单接口
  */
 export class EchoStore<T = any> {
-  private adapter: IndexedDBAdapter<T>;
+  private db: IDBDatabase | null = null;
   /** 监听器集合 */
   private listeners: Set<(data: T[]) => void> = new Set();
   /** 用于 React Hooks 的 hook 函数 */
   private hookRef: ((selector?: (data: T[]) => any) => any) | null = null;
+  /** 初始化完成的Promise */
+  private readyPromise: Promise<void>;
 
-  constructor(database: string, objectStore: string = "echo-state") {
-    this.adapter = new IndexedDBAdapter<T>({
-      name: "store",
-      database,
-      object: objectStore,
-    });
+  constructor(
+    private database: string,
+    private objectStore: string = "echo-state",
+    private version: number = 1
+  ) {
     this.hookRef = this.createHook();
+    this.readyPromise = this.init();
+    this.readyPromise.then(() => {
+      this.list().then((result) => {
+        this.notifyListeners(result);
+      });
+    });
+  }
+
+  private async init() {
+    this.db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.database, this.version);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(this.objectStore)) {
+          db.createObjectStore(this.objectStore);
+        }
+      };
+    });
+  }
+
+  /**
+   * 等待数据库初始化完成
+   * @returns Promise<void>
+   */
+  public async ready(): Promise<void> {
+    return this.readyPromise;
   }
 
   /**
@@ -101,7 +129,7 @@ export class EchoStore<T = any> {
    */
   public use<Selected = T[]>(selector?: (data: T[]) => Selected): Selected {
     if (!this.hookRef) {
-      throw new Error("Hook 未初始化");
+      throw new Error("Hook not initialized");
     }
     return this.hookRef(selector);
   }
@@ -111,16 +139,15 @@ export class EchoStore<T = any> {
    * @returns Promise<T[]> 所有存储的数据
    */
   async list(): Promise<T[]> {
-    await this.adapter.init();
     return new Promise((resolve, reject) => {
-      const db = (this.adapter as any).db;
+      const db = this.db;
       if (!db) {
-        reject(new Error("数据库未初始化"));
+        reject(new Error("Database not initialized"));
         return;
       }
 
-      const transaction = db.transaction(this.adapter.getObjectStoreName(), "readonly");
-      const store = transaction.objectStore(this.adapter.getObjectStoreName());
+      const transaction = db.transaction(this.objectStore, "readonly");
+      const store = transaction.objectStore(this.objectStore);
       const request = store.getAll();
 
       request.onsuccess = () => {
@@ -141,16 +168,15 @@ export class EchoStore<T = any> {
    * @returns Promise<T | null> 存储的数据
    */
   async get(key: string): Promise<T | null> {
-    await this.adapter.init();
     return new Promise((resolve, reject) => {
-      const db = (this.adapter as any).db;
+      const db = this.db;
       if (!db) {
-        reject(new Error("数据库未初始化"));
+        reject(new Error("Database not initialized"));
         return;
       }
 
-      const transaction = db.transaction(this.adapter.getObjectStoreName(), "readonly");
-      const store = transaction.objectStore(this.adapter.getObjectStoreName());
+      const transaction = db.transaction(this.objectStore, "readonly");
+      const store = transaction.objectStore(this.objectStore);
       const request = store.get(key);
 
       request.onsuccess = () => {
@@ -170,16 +196,15 @@ export class EchoStore<T = any> {
    * @returns Promise<void>
    */
   async set(key: string, value: T): Promise<void> {
-    await this.adapter.init();
     return new Promise((resolve, reject) => {
-      const db = (this.adapter as any).db;
+      const db = this.db;
       if (!db) {
-        reject(new Error("数据库未初始化"));
+        reject(new Error("Database not initialized"));
         return;
       }
 
-      const transaction = db.transaction(this.adapter.getObjectStoreName(), "readwrite");
-      const store = transaction.objectStore(this.adapter.getObjectStoreName());
+      const transaction = db.transaction(this.objectStore, "readwrite");
+      const store = transaction.objectStore(this.objectStore);
       const request = store.put(value, key);
 
       request.onsuccess = async () => {
@@ -200,16 +225,15 @@ export class EchoStore<T = any> {
    * @returns Promise<void>
    */
   async delete(key: string): Promise<void> {
-    await this.adapter.init();
     return new Promise((resolve, reject) => {
-      const db = (this.adapter as any).db;
+      const db = this.db;
       if (!db) {
-        reject(new Error("数据库未初始化"));
+        reject(new Error("Database not initialized"));
         return;
       }
 
-      const transaction = db.transaction(this.adapter.getObjectStoreName(), "readwrite");
-      const store = transaction.objectStore(this.adapter.getObjectStoreName());
+      const transaction = db.transaction(this.objectStore, "readwrite");
+      const store = transaction.objectStore(this.objectStore);
       const request = store.delete(key);
 
       request.onsuccess = async () => {
@@ -229,16 +253,15 @@ export class EchoStore<T = any> {
    * @returns Promise<void>
    */
   async clear(): Promise<void> {
-    await this.adapter.init();
     return new Promise((resolve, reject) => {
-      const db = (this.adapter as any).db;
+      const db = this.db;
       if (!db) {
-        reject(new Error("数据库未初始化"));
+        reject(new Error("Database not initialized"));
         return;
       }
 
-      const transaction = db.transaction(this.adapter.getObjectStoreName(), "readwrite");
-      const store = transaction.objectStore(this.adapter.getObjectStoreName());
+      const transaction = db.transaction(this.objectStore, "readwrite");
+      const store = transaction.objectStore(this.objectStore);
       const request = store.clear();
 
       request.onsuccess = () => {
@@ -256,13 +279,14 @@ export class EchoStore<T = any> {
    * 关闭数据库连接
    */
   close(): void {
-    this.adapter.close();
+    this.db?.close();
   }
 
   /**
    * 销毁数据库
    */
   destroy(): void {
-    this.adapter.destroy();
+    this.close();
+    indexedDB.deleteDatabase(this.database);
   }
 } 
