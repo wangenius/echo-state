@@ -3,11 +3,12 @@ import { Counter } from "./counter";
 import { AsyncDataTest } from "./asyncDataTest";
 import { IndexedEchoTest } from "./indexedEchoTest";
 import { PrimitiveEchoTest } from "./PrimitiveEchoTest";
+import { EchoStoreTest } from "./EchoStoreTest";
 
 // 主应用组件
 export function App() {
   const [activeTab, setActiveTab] = useState<
-    "counter" | "asyncData" | "indexedEcho" | "primitiveEcho"
+    "counter" | "asyncData" | "indexedEcho" | "primitiveEcho" | "echoStore"
   >("indexedEcho");
 
   return (
@@ -101,6 +102,23 @@ export function App() {
         >
           原始类型测试
         </button>
+        <button
+          onClick={() => setActiveTab("echoStore")}
+          style={{
+            padding: "0.75rem 1.5rem",
+            background: "transparent",
+            border: "none",
+            borderBottom: `2px solid ${
+              activeTab === "echoStore" ? "#2563eb" : "transparent"
+            }`,
+            color: activeTab === "echoStore" ? "#2563eb" : "#64748b",
+            fontWeight: activeTab === "echoStore" ? "bold" : "normal",
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }}
+        >
+          EchoStore测试
+        </button>
       </div>
 
       {/* 内容区域 */}
@@ -111,6 +129,8 @@ export function App() {
           <AsyncDataTest />
         ) : activeTab === "primitiveEcho" ? (
           <PrimitiveEchoTest />
+        ) : activeTab === "echoStore" ? (
+          <EchoStoreTest />
         ) : (
           <IndexedEchoTest />
         )}

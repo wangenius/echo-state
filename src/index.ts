@@ -1,2 +1,4 @@
 export { Echo } from "./core/Echo";
-export { EchoItem, EchoList } from "./core/EchoItem";
+export { EchoItem } from "./core/EchoItem";
+export { EchoList } from "./core/EchoItem";
+export { EchoStore } from "./core/EchoStore";

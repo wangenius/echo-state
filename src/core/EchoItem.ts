@@ -12,7 +12,7 @@ export abstract class EchoList<T extends Record<string, any> & { id: string }> {
   public use = this.store.use.bind(this.store);
   public set = this.store.set.bind(this.store);
   public delete = this.store.delete.bind(this.store);
-  public current() {
+  public get current() {
     return this.store.current;
   }
 }
