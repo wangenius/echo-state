@@ -29,7 +29,7 @@ export abstract class EchoList<T extends Record<string, any> & { id: string }> {
  */
 export abstract class EchoItem<T extends Record<string, any> & { id: string }> {
   /** Echo 状态管理实例 */
-  protected store: Echo<T | null> = new Echo<T | null>(null);
+  protected store: Echo<T> = new Echo<T>({} as T);
 
   /** 使用 React Hook 获取状态 */
   public use = this.store.use.bind(this.store);
@@ -41,7 +41,9 @@ export abstract class EchoItem<T extends Record<string, any> & { id: string }> {
    * 构造函数
    * @param database 数据库名称
    */
-  constructor(private database: string) {}
+  constructor(private database: string,  defaultItem: T) {
+    this.store.set(defaultItem);
+  }
 
   /**
    * 获取当前状态
