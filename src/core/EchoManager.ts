@@ -67,6 +67,51 @@ export class EchoManager {
       useEffect(() => {
         let isMounted = true;
 
+        // 立即从 IndexedDB 获取数据
+        const getDataFromIndexedDB = async () => {
+          try {
+            const request = indexedDB.open(database, 1);
+            request.onerror = () => {
+              console.error('Failed to open IndexedDB:', request.error);
+              if (isMounted) {
+                setData([]);
+                forceUpdate({});
+              }
+            };
+            request.onsuccess = async () => {
+              const db = request.result;
+              if (!db.objectStoreNames.contains(objectStore)) {
+                db.createObjectStore(objectStore);
+              }
+              const transaction = db.transaction(objectStore, "readonly");
+              const store = transaction.objectStore(objectStore);
+              const getAllRequest = store.getAll();
+              getAllRequest.onsuccess = () => {
+                if (isMounted) {
+                  setData(getAllRequest.result);
+                  forceUpdate({});
+                }
+              };
+              getAllRequest.onerror = () => {
+                console.error('Failed to get data from IndexedDB:', getAllRequest.error);
+                if (isMounted) {
+                  setData([]);
+                  forceUpdate({});
+                }
+              };
+            };
+          } catch (error) {
+            console.error('Error accessing IndexedDB:', error);
+            if (isMounted) {
+              setData([]);
+              forceUpdate({});
+            }
+          }
+        };
+
+        // 执行数据获取
+        getDataFromIndexedDB();
+
         // 添加监听器
         const listener = (newData: T[]) => {
           if (isMounted) {
