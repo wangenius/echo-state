@@ -1,5 +1,4 @@
 import { StorageAdapter, IndexedDBConfig } from "../core/types";
-import { EchoManager } from "../core/EchoManager";
 
 /**
  * IndexedDB 存储适配器
@@ -14,8 +13,6 @@ export class IndexedDBAdapter<T = any> implements StorageAdapter<T> {
     this.databaseName = config.database;
     this.objectStoreName = config.object || "echo-state";
     this.name = config.name;
-    // 在构造函数中立即初始化
-    this.init();
   }
 
   /**
@@ -35,47 +32,28 @@ export class IndexedDBAdapter<T = any> implements StorageAdapter<T> {
   async init(): Promise<void> {
     if (this.db) return;
 
-    try {
-      this.db = await new Promise((resolve, reject) => {
-        const request = indexedDB.open(this.databaseName, 1);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = async () => {
-          resolve(request.result);
-        };
-        request.onupgradeneeded = (event) => {
-          const db = (event.target as IDBOpenDBRequest).result;
-          if (!db.objectStoreNames.contains(this.objectStoreName)) {
-            db.createObjectStore(this.objectStoreName);
-          }
-        };
-      });
-
-      // 立即获取数据并通知
-      const allData = await this.getAllItems();
-      EchoManager.notify(this.databaseName, this.objectStoreName, allData);
-    } catch (error) {
-      console.error('Failed to initialize IndexedDB:', error);
-      // 即使出错也通知空数组
-      EchoManager.notify(this.databaseName, this.objectStoreName, []);
-    }
+    this.db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.databaseName, 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(this.objectStoreName)) {
+          db.createObjectStore(this.objectStoreName);
+        }
+      };
+    });
   }
 
   async getItem(): Promise<T | null> {
     await this.init();
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(this.objectStoreName, "readonly");
+      const transaction = this.db!.transaction(
+        this.objectStoreName,
+        "readonly"
+      );
       const store = transaction.objectStore(this.objectStoreName);
       const request = store.get(this.name);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  private async getAllItems(): Promise<T[]> {
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(this.objectStoreName, "readonly");
-      const store = transaction.objectStore(this.objectStoreName);
-      const request = store.getAll();
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
@@ -84,17 +62,13 @@ export class IndexedDBAdapter<T = any> implements StorageAdapter<T> {
   async setItem(value: T): Promise<void> {
     await this.init();
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(this.objectStoreName, "readwrite");
+      const transaction = this.db!.transaction(
+        this.objectStoreName,
+        "readwrite"
+      );
       const store = transaction.objectStore(this.objectStoreName);
       const request = store.put(value, this.name);
-      
-      request.onsuccess = async () => {
-        // 获取最新数据并通知
-        const allData = await this.getAllItems();
-        EchoManager.notify(this.databaseName, this.objectStoreName, allData);
-        resolve();
-      };
-      
+      request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
   }
@@ -102,17 +76,13 @@ export class IndexedDBAdapter<T = any> implements StorageAdapter<T> {
   async removeItem(): Promise<void> {
     await this.init();
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(this.objectStoreName, "readwrite");
+      const transaction = this.db!.transaction(
+        this.objectStoreName,
+        "readwrite"
+      );
       const store = transaction.objectStore(this.objectStoreName);
       const request = store.delete(this.name);
-      
-      request.onsuccess = async () => {
-        // 获取最新数据并通知
-        const allData = await this.getAllItems();
-        EchoManager.notify(this.databaseName, this.objectStoreName, allData);
-        resolve();
-      };
-      
+      request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
   }
@@ -124,17 +94,13 @@ export class IndexedDBAdapter<T = any> implements StorageAdapter<T> {
   async discard(): Promise<void> {
     await this.init();
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(this.objectStoreName, "readwrite");
+      const transaction = this.db!.transaction(
+        this.objectStoreName,
+        "readwrite"
+      );
       const store = transaction.objectStore(this.objectStoreName);
       const request = store.delete(this.name);
-      
-      request.onsuccess = async () => {
-        // 获取最新数据并通知
-        const allData = await this.getAllItems();
-        EchoManager.notify(this.databaseName, this.objectStoreName, allData);
-        resolve();
-      };
-      
+      request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
   }
