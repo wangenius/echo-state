@@ -54,6 +54,22 @@ export class Echo<T extends Record<string, any> | null | string | number> {
     | (<Selected = T>(selector?: (state: T) => Selected) => Selected)
     | null = null;
 
+  /**
+   * 快速获取一个 IndexedDB 存储的实例
+   * @param config 配置对象，包含 database、objectstore 和 name
+   * @returns 配置好的 Echo 实例
+   */
+  public static get<T extends Record<string, any> | null | string | number>(
+    config: { database: string; objectstore: string; name: string }
+  ): Echo<T> {
+    return new Echo<T>(null as T).indexed({
+      database: config.database,
+      object: config.objectstore,
+      name: config.name,
+      sync: true
+    });
+  }
+
   constructor(protected readonly defaultState: T) {
     // 确保类型安全，处理null情况
     if (defaultState === null) {
