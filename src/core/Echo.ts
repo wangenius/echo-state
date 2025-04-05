@@ -62,6 +62,10 @@ export class Echo<T extends Record<string, any> | null | string | number> {
   public static get<T extends Record<string, any> | null | string | number>(
     config: { database: string; objectstore?: string; name: string }
   ): Echo<T> {
+    // 当 name 为空字符串时，使用临时存储
+    if (config.name === "") {
+      return new Echo<T>(null as T).temporary();
+    }
     return new Echo<T>(null as T).indexed({
       database: config.database,
       object: config.objectstore || "echo-state",
@@ -433,6 +437,11 @@ export class Echo<T extends Record<string, any> | null | string | number> {
       throw new Error("Echo Core: switch 方法仅限于 IndexedDB 方案使用");
     }
 
+    // 当 name 为空字符串时，切换到临时存储
+    if (name === "") {
+      return this.temporary();
+    }
+
     // 获取当前配置
     const hasSync = !!this.syncChannel;
 
@@ -479,6 +488,10 @@ export class Echo<T extends Record<string, any> | null | string | number> {
    * @param config 存储配置
    */
   public localStorage(config: StorageConfig): this {
+    // 当 name 为空字符串时，使用临时存储
+    if (config.name === "") {
+        return this.temporary();
+    }
     this.cleanup();
     this.storageAdapter = new LocalStorageAdapter<T>(config);
     this.readyPromise = this.hydrate();
@@ -495,6 +508,10 @@ export class Echo<T extends Record<string, any> | null | string | number> {
    * @param config IndexedDB 配置
    */
   public indexed(config: IndexedDBConfig): this {
+    // 当 name 为空字符串时，使用临时存储
+    if (config.name === "") {
+        return this.temporary();
+    }
     this.cleanup();
     this.storageAdapter = new IndexedDBAdapter<T>(config);
 
