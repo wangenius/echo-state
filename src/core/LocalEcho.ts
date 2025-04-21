@@ -6,7 +6,7 @@ import { LocalStorageAdapter } from "../storage/LocalStorageAdapter";
 type Listener<T> = (state: T) => void;
 
 /**
- * LocalEcho 状态管理类
+ * LocalEcho
  * 一个轻量级的状态管理库，专门使用 LocalStorage 作为存储
  * 区别于Echo类，LocalEcho支持同步操作，不需要等待异步初始化
  *
