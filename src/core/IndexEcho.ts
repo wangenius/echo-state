@@ -34,7 +34,7 @@ type Listener<T> = (state: T) => void;
  * - 支持状态订阅
  * - 支持选择器
  */
-export class Echo<T extends Record<string, any> | null | string | number> {
+export class IndexEcho<T extends Record<string, any> | null | string | number> {
   /** 当前状态 */
   protected state: T;
   /** 初始化完成的Promise */
@@ -61,12 +61,12 @@ export class Echo<T extends Record<string, any> | null | string | number> {
    */
   public static get<T extends Record<string, any> | null | string | number>(
     config: { database: string; objectstore?: string; name: string }
-  ): Echo<T> {
+  ): IndexEcho<T> {
     // 当 name 为空字符串时，使用临时存储
     if (config.name === "") {
-      return new Echo<T>(null as T).temporary();
+      return new IndexEcho<T>(null as T).temporary();
     }
-    return new Echo<T>(null as T).indexed({
+    return new IndexEcho<T>(null as T).indexed({
       database: config.database,
       object: config.objectstore || "echo-state",
       name: config.name,
